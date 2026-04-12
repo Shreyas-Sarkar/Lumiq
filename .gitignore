@@ -1,0 +1,22 @@
+__pycache__/
+*.pyc
+.env
+node_modules/
+.next/
+dist/
+build/
+*.log
+.DS_Store
+coverage/
+venv/
+
+# Additional hygiene
+.venv/
+backend/venv/
+backend/data/chroma/
+backend/data/uploads/
+*.tsbuildinfo
+.env.*
+!.env.example
+!backend/.env.example
+!frontend/.env.example
