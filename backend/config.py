@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     # Qdrant Cloud — replaces ChromaDB local storage
     qdrant_url: str = ""
     qdrant_api_key: str = ""
+    cohere_api_key: str = ""
 
     class Config:
         env_file = ".env"

@@ -13,12 +13,14 @@ health check:
     delete_collection(collection_id)
 
 Storage backend swapped: ChromaDB → Qdrant (via VectorStore adapter).
-Embedding model unchanged: sentence-transformers/all-MiniLM-L6-v2 (dim=384).
+Embedding backend migrated to Cohere API (dim=1024).
 """
 
 import json
 import logging
 from typing import Optional
+
+from services.embedding_service import EmbeddingService
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +40,7 @@ class RAGService:
         # persist_dir is retained so main.py and any future call sites that
         # pass it as a keyword argument continue to work without modification.
         self._persist_dir = persist_dir  # not used
-        self._embedding_model = None
+        self._embedding_service = None
         self._vector_store = None
         self._initialized = False
 
@@ -47,17 +49,14 @@ class RAGService:
     # ------------------------------------------------------------------
 
     def _ensure_initialized(self):
-        """Lazy-load the embedding model and Qdrant client."""
+        """Lazy-load the embedding client and Qdrant client."""
         if self._initialized:
             return
 
         try:
-            from sentence_transformers import SentenceTransformer
             from services.vector_store import VectorStore
 
-            self._embedding_model = SentenceTransformer(
-                "sentence-transformers/all-MiniLM-L6-v2"
-            )
+            self._embedding_service = EmbeddingService()
             self._vector_store = VectorStore()
             # Force a connection probe so errors surface early.
             self._vector_store._get_client()
@@ -69,8 +68,11 @@ class RAGService:
 
     def _embed(self, texts: list[str]) -> list[list[float]]:
         """Return a list of float vectors for the given texts."""
-        vectors = self._embedding_model.encode(texts, convert_to_numpy=True)
-        return [v.tolist() for v in vectors]
+        try:
+            return self._embedding_service.embed(texts)
+        except Exception as exc:
+            logger.warning("Embedding generation failed: %s", exc)
+            return []
 
     # ------------------------------------------------------------------
     # Collection management (kept for backward-compat)

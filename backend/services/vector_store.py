@@ -11,8 +11,10 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
-# All-MiniLM-L6-v2 produces 384-dimensional vectors
-VECTOR_SIZE = 384
+# Cohere embed-english-v3.0 produces 1024-dimensional vectors
+EMBEDDING_DIM = 1024
+# Backward-compatible alias used by existing call sites.
+VECTOR_SIZE = EMBEDDING_DIM
 
 
 class VectorStore:
@@ -73,7 +75,7 @@ class VectorStore:
                         distance=Distance.COSINE,
                     ),
                 )
-                logger.info("Created Qdrant collection '%s'", safe_name)
+                logger.info("[QDRANT] Created collection '%s'", safe_name)
         except Exception as exc:
             logger.error("create_collection('%s') failed: %s", safe_name, exc)
             raise
@@ -114,7 +116,7 @@ class VectorStore:
 
         try:
             client.upsert(collection_name=safe_name, points=points)
-            logger.info("Upserted %d points → '%s'", len(points), safe_name)
+            logger.info("[QDRANT] Upserted %d points → '%s'", len(points), safe_name)
         except Exception as exc:
             logger.error("upsert('%s') failed: %s", safe_name, exc)
             raise
