@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
+import logging
 from models.schemas import (
     ChatCreateRequest,
     ChatResponse,
@@ -11,6 +12,7 @@ from routers.auth_middleware import get_current_user
 import re
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 UUID_PATTERN = re.compile(
     r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
@@ -131,4 +133,6 @@ async def send_query(
         )
         return result
     except Exception as e:
+        logger.exception("[ERROR] /api/chat failed for chat_id=%s: %s", body.chat_id, e)
+        print("[ERROR]", e)
         raise HTTPException(status_code=500, detail="Analysis failed. Please try again.")

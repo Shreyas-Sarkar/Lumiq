@@ -141,21 +141,39 @@ class ChatOrchestrator:
         # 5. Classify mode — schema-aware (df passed for column matching)
         mode = self.mode_classifier.classify(query, df=df)
         logger.info("Mode classified as: %s for query: %s", mode, query[:60])
+        print("[PIPELINE] mode:", mode)
 
         # 6. Get recent context for cognitive engine (parallel with RAG)
         chat_history = self.chat_manager.get_recent_context(chat_id, n=10)
         collection_id = dataset.get("chroma_collection_id", dataset["id"])
 
-        # 7. Run RAG retrieval + context summarization concurrently
-        rag_context, chat_summary = await asyncio.gather(
-            asyncio.to_thread(
-                self.rag_service.retrieve_context,
-                collection_id=collection_id,
-                query=query,
-                n_results=3,
-            ),
-            self.context_summarizer.summarize(chat_history),
+        # 7. Run context summarization always; run RAG only for non-executor modes.
+        # Vector context is optional and must never break query handling.
+        summary_task = asyncio.create_task(
+            self.context_summarizer.summarize(chat_history)
         )
+        rag_context = []
+        if mode != "executor":
+            try:
+                rag_context = await asyncio.to_thread(
+                    self.rag_service.retrieve_context,
+                    collection_id=collection_id,
+                    query=query,
+                    n_results=3,
+                )
+            except Exception as e:
+                logger.warning("Optional RAG retrieval failed: %s", e)
+                print("[ERROR]", e)
+                rag_context = []
+        else:
+            print("[VECTOR] search skipped for executor")
+
+        try:
+            chat_summary = await summary_task
+        except Exception as e:
+            logger.warning("Context summarization failed: %s", e)
+            print("[ERROR]", e)
+            chat_summary = "No prior analysis in this session."
 
         # 8. Route to appropriate pipeline
         if mode == "executor":
@@ -236,6 +254,7 @@ class ChatOrchestrator:
                 )
                 code = gen_result.code
             except Exception as e:
+                print("[ERROR]", e)
                 return self.explanation_service.format_error_response(
                     query, str(e), retry_count
                 )
@@ -254,6 +273,7 @@ class ChatOrchestrator:
                 )
 
             # Execution
+            print("[EXECUTOR] running code")
             exec_result = self.execution_engine.execute(code, df)
             eval_result = await self.evaluator.evaluate(query, code, exec_result)
 
@@ -335,6 +355,7 @@ class ChatOrchestrator:
                 )
                 code = gen_result.code
             except Exception as e:
+                print("[ERROR]", e)
                 return self.explanation_service.format_error_response(
                     query, str(e), retry_count
                 )

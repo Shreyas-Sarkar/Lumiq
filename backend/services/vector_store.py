@@ -54,6 +54,23 @@ class VectorStore:
         """Qdrant collection names must not contain hyphens — replace with underscores."""
         return name.replace("-", "_")
 
+    @staticmethod
+    def _extract_collection_vector_size(collection_info: Any) -> int | None:
+        """Best-effort extraction of vector size from Qdrant collection info."""
+        try:
+            vectors = collection_info.config.params.vectors
+            # Single-vector config
+            if hasattr(vectors, "size"):
+                return int(vectors.size)
+            # Named vectors config
+            if isinstance(vectors, dict):
+                first = next(iter(vectors.values()), None)
+                if first is not None and hasattr(first, "size"):
+                    return int(first.size)
+        except Exception:
+            return None
+        return None
+
     # ------------------------------------------------------------------
     # Public interface
     # ------------------------------------------------------------------
@@ -67,7 +84,29 @@ class VectorStore:
 
         try:
             existing = {c.name for c in client.get_collections().collections}
-            if safe_name not in existing:
+            should_create = safe_name not in existing
+
+            if not should_create:
+                try:
+                    info = client.get_collection(collection_name=safe_name)
+                    existing_size = self._extract_collection_vector_size(info)
+                    if existing_size is not None and existing_size != vector_size:
+                        logger.warning(
+                            "Collection '%s' has size=%s, expected=%s. Recreating.",
+                            safe_name,
+                            existing_size,
+                            vector_size,
+                        )
+                        client.delete_collection(collection_name=safe_name)
+                        should_create = True
+                except Exception as exc:
+                    logger.warning(
+                        "Could not verify collection '%s' vector size: %s",
+                        safe_name,
+                        exc,
+                    )
+
+            if should_create:
                 client.create_collection(
                     collection_name=safe_name,
                     vectors_config=VectorParams(
@@ -99,6 +138,14 @@ class VectorStore:
 
         safe_name = self._sanitise_name(collection)
         client = self._get_client()
+
+        if not embeddings or not metadata or not ids:
+            logger.warning("upsert('%s') skipped: empty payload", safe_name)
+            return
+
+        if any((not emb or len(emb) != EMBEDDING_DIM) for emb in embeddings):
+            logger.warning("upsert('%s') skipped: invalid embedding vector size", safe_name)
+            return
 
         # Qdrant point IDs must be uint64 or UUID strings.
         # We store the original string ID inside the payload and use the
@@ -135,6 +182,10 @@ class VectorStore:
         """
         safe_name = self._sanitise_name(collection)
         client = self._get_client()
+
+        if not query_embedding or len(query_embedding) != EMBEDDING_DIM:
+            logger.warning("query('%s') skipped: invalid query vector", safe_name)
+            return []
 
         try:
             results = client.search(

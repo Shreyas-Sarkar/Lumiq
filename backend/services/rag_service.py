@@ -72,6 +72,7 @@ class RAGService:
             return self._embedding_service.embed(texts)
         except Exception as exc:
             logger.warning("Embedding generation failed: %s", exc)
+            print("[ERROR]", exc)
             return []
 
     # ------------------------------------------------------------------
@@ -151,10 +152,29 @@ class RAGService:
         Replaces any existing points for this collection (delete + re-upsert)
         so re-uploads behave identically to the previous Chroma implementation.
         """
-        self._ensure_initialized()
+        try:
+            self._ensure_initialized()
+        except Exception as exc:
+            logger.warning("RAG init failed during indexing: %s", exc)
+            print("[ERROR]", exc)
+            return
 
         documents = self.build_documents(schema, samples, stats)
         embeddings = self._embed(documents)
+
+        from services.vector_store import VECTOR_SIZE
+
+        if len(embeddings) != len(documents):
+            logger.warning(
+                "Embedding count mismatch: got %d for %d documents",
+                len(embeddings),
+                len(documents),
+            )
+            return
+
+        if any((not v or len(v) != VECTOR_SIZE) for v in embeddings):
+            logger.warning("Embedding vector validation failed; skipping index update")
+            return
 
         # Delete stale collection first (idempotent on first run)
         try:
@@ -163,7 +183,6 @@ class RAGService:
             pass
 
         # Re-create and upsert fresh
-        from services.vector_store import VECTOR_SIZE
 
         self._vector_store.create_collection(collection_id, vector_size=VECTOR_SIZE)
 
@@ -189,9 +208,14 @@ class RAGService:
             results["documents"][0]   (Chroma's response format)
         Callers are unchanged.
         """
-        self._ensure_initialized()
         try:
+            self._ensure_initialized()
+            from services.vector_store import VECTOR_SIZE
+
             query_vector = self._embed([query])[0]
+            if not query_vector or len(query_vector) != VECTOR_SIZE:
+                logger.warning("Query embedding missing or invalid dimension")
+                return []
             hits = self._vector_store.query(
                 collection=collection_id,
                 query_embedding=query_vector,
@@ -201,6 +225,7 @@ class RAGService:
             return [hit.payload.get("text", "") for hit in hits if hit.payload]
         except Exception as exc:
             logger.warning("retrieve_context failed for '%s': %s", collection_id, exc)
+            print("[ERROR]", exc)
             return []
 
     # ------------------------------------------------------------------
