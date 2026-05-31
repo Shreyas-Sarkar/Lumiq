@@ -266,6 +266,13 @@ export default function LandingPage() {
             Sign in
           </Link>
           <Link
+            href="/signup"
+            className="text-sm transition-colors px-3 py-1.5 rounded-lg"
+            style={{ color: "var(--accent)" }}
+          >
+            Sign up
+          </Link>
+          <Link
             href="/chat"
             className="text-sm font-medium flex items-center gap-1.5 px-4 py-1.5 rounded-lg transition-all duration-150"
             style={{
@@ -352,6 +359,17 @@ export default function LandingPage() {
               }}
             >
               Sign in
+            </Link>
+            <Link
+              href="/signup"
+              className="px-5 py-2.5 rounded-lg text-sm transition-all duration-150"
+              style={{
+                background: "var(--surface-2)",
+                border: "1px solid var(--border)",
+                color: "var(--text)",
+              }}
+            >
+              Sign up
             </Link>
           </div>
 

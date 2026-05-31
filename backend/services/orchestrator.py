@@ -103,7 +103,9 @@ class ChatOrchestrator:
 
         # 2. Load dataset metadata
         try:
-            dataset = self.dataset_manager.get_dataset_by_chat_id(chat_id)
+            dataset = self.dataset_manager.get_dataset_by_chat_id(
+                chat_id, current_user["id"]
+            )
         except ValueError:
             response_data = self.explanation_service.format_rejection_response(
                 query, "No dataset uploaded for this chat. Please upload a CSV first."
@@ -144,7 +146,7 @@ class ChatOrchestrator:
         print("[PIPELINE] mode:", mode)
 
         # 6. Get recent context for cognitive engine (parallel with RAG)
-        chat_history = self.chat_manager.get_recent_context(chat_id, n=10)
+        chat_history = self.chat_manager.get_recent_context(chat_id, n=12)
         collection_id = dataset.get("chroma_collection_id", dataset["id"])
 
         # 7. Run context summarization always; run RAG only for non-executor modes.
@@ -248,6 +250,7 @@ class ChatOrchestrator:
                     query=query,
                     schema_context=rag_context,
                     chat_history=chat_history,
+                    chat_summary=chat_summary,
                     dataset_schema=schema,
                     retry_suffix=retry_suffix,
                     mode="executor",
@@ -349,6 +352,7 @@ class ChatOrchestrator:
                     query=query,
                     schema_context=rag_context,
                     chat_history=chat_history,
+                    chat_summary=chat_summary,
                     dataset_schema=schema,
                     retry_suffix=retry_suffix,
                     mode="hybrid",

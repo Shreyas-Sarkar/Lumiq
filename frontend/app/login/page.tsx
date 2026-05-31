@@ -92,7 +92,7 @@ export default function LoginPage() {
             Sign in to your workspace
           </h1>
           <p className="text-xs mt-1" style={{ color: "var(--muted)" }}>
-            New users are registered automatically on first login.
+            Sign in to an existing account, or create one on the signup page.
           </p>
         </div>
 
@@ -222,6 +222,16 @@ export default function LoginPage() {
           style={{ color: "var(--muted)" }}
         >
           ← Back to Lumiq
+        </Link>
+        <span className="mx-2 text-xs" style={{ color: "var(--muted)" }}>
+          ·
+        </span>
+        <Link
+          href="/signup"
+          className="text-xs transition-colors"
+          style={{ color: "var(--accent)" }}
+        >
+          Create account
         </Link>
       </div>
     </div>

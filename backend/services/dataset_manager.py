@@ -138,14 +138,11 @@ class DatasetManager:
         result = self.supabase.table("dataset").insert(data).execute()
         return result.data[0]
 
-    def get_dataset_by_chat_id(self, chat_id: str) -> dict:
-        result = (
-            self.supabase.table("dataset")
-            .select("*")
-            .eq("chat_id", chat_id)
-            .limit(1)
-            .execute()
-        )
+    def get_dataset_by_chat_id(self, chat_id: str, user_id: str | None = None) -> dict:
+        query = self.supabase.table("dataset").select("*").eq("chat_id", chat_id)
+        if user_id:
+            query = query.eq("user_id", user_id)
+        result = query.limit(1).execute()
         if not result.data:
             raise ValueError(f"No dataset found for chat {chat_id}")
         return result.data[0]

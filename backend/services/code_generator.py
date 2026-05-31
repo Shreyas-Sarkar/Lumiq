@@ -85,6 +85,7 @@ class CodeGenerator:
         query: str,
         schema_context: list[str],
         chat_history: list[dict],
+        chat_summary: str,
         dataset_schema: dict,
         retry_suffix: str = "",
         mode: str = "executor",
@@ -94,6 +95,7 @@ class CodeGenerator:
             "\n\n".join(schema_context) if schema_context else "No context retrieved."
         )
         formatted_history = self._format_history(chat_history)
+        formatted_summary = chat_summary.strip() or "No prior conversation summary."
 
         system_prompt = (
             HYBRID_SYSTEM_PROMPT if mode == "hybrid" else EXECUTOR_SYSTEM_PROMPT
@@ -104,6 +106,9 @@ class CodeGenerator:
 
 Retrieved Context:
 {rag_context_joined}
+
+Conversation Summary:
+{formatted_summary}
 
 Recent Conversation:
 {formatted_history}
@@ -153,8 +158,8 @@ Write Python/Pandas code to answer this question. The DataFrame is loaded as `df
         if not history:
             return "No previous conversation."
         lines = []
-        for msg in history[-6:]:
+        for msg in history[-10:]:
             role = msg.get("role", "unknown")
-            content = msg.get("content", "")[:200]
+            content = msg.get("content", "")[:300]
             lines.append(f"{role.capitalize()}: {content}")
         return "\n".join(lines)
