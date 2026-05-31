@@ -104,7 +104,7 @@ class ChatOrchestrator:
         # 2. Load dataset metadata
         try:
             dataset = self.dataset_manager.get_dataset_by_chat_id(
-                chat_id, current_user["id"]
+                chat_id, user_id
             )
         except ValueError:
             response_data = self.explanation_service.format_rejection_response(
