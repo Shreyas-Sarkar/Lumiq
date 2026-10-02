@@ -48,7 +48,9 @@ Python; the investigation workspace and multi-agent graph are planned work.
 
 Use only the `Shreyas-Sarkar` GitHub account for writes to this repository.
 Verify the authenticated login and repository remote before each push or other
-GitHub mutation; switch to the owner's account if needed. Keep commits small and
+GitHub mutation; switch to the owner's account if needed. Use plain descriptive branch names without an assistant-name prefix. Do not
+mention the coding assistant in branch names, application code, or project-authored
+documentation. This naming rule overrides tool defaults. Keep commits small and
 coherent. Run checks appropriate to each change and push only verified work;
 report validation limits rather than claiming a green typecheck proves live behavior.
 

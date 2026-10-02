@@ -24,8 +24,8 @@ class QueryCache:
     # Public API
     # ------------------------------------------------------------------
 
-    def get(self, query: str, dataset_hash: str) -> Optional[dict]:
-        key = self._make_key(query, dataset_hash)
+    def get(self, query: str, dataset_hash: str, context: str = "") -> Optional[dict]:
+        key = self._make_key(query, dataset_hash, context)
         entry = self._cache.get(key)
         if entry is None:
             return None
@@ -34,17 +34,17 @@ class QueryCache:
             return None
         return entry["data"]
 
-    def set(self, query: str, dataset_hash: str, data: dict) -> None:
+    def set(self, query: str, dataset_hash: str, data: dict, context: str = "") -> None:
         if len(self._cache) >= self.max_size:
             # Evict the oldest entry
             oldest_key = min(self._cache, key=lambda k: self._cache[k]["ts"])
             del self._cache[oldest_key]
-        key = self._make_key(query, dataset_hash)
-        self._cache[key] = {"data": data, "ts": time.time()}
+        key = self._make_key(query, dataset_hash, context)
+        self._cache[key] = {"data": data, "ts": time.time(), "dataset_hash": dataset_hash}
 
     def invalidate(self, dataset_hash: str) -> None:
         """Remove all entries for a given dataset (e.g., after re-upload)."""
-        keys_to_del = [k for k, v in self._cache.items() if dataset_hash in k]
+        keys_to_del = [k for k, v in self._cache.items() if v["dataset_hash"] == dataset_hash]
         for k in keys_to_del:
             del self._cache[k]
 
@@ -52,8 +52,8 @@ class QueryCache:
     # Helpers
     # ------------------------------------------------------------------
 
-    def _make_key(self, query: str, dataset_hash: str) -> str:
-        raw = f"{query.strip().lower()}::{dataset_hash}"
+    def _make_key(self, query: str, dataset_hash: str, context: str = "") -> str:
+        raw = f"{query.strip().lower()}::{dataset_hash}::{context}"
         return hashlib.md5(raw.encode()).hexdigest()
 
     @staticmethod

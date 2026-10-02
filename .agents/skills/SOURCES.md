@@ -5,8 +5,8 @@ Revision: `d81f3a183412e71a5b1e84ca21bc1a35eea03a60`
 Installed: 2026-10-02
 License: MIT; see `MATT-POCOCK-LICENSE.txt`.
 
-Installed using Codex Skill Installer into `.agents/skills/`. Bodies and references
-are upstream copies; the installer adds Codex UI metadata where absent.
+Installed using the skill installer into `.agents/skills/`. Bodies and references
+are upstream copies; the installer adds agent UI metadata where absent.
 Provenance/license files are local additions. No global installation or automatic
 upstream updates were performed.
 

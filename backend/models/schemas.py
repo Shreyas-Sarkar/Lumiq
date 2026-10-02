@@ -93,6 +93,7 @@ class AssistantResponse(BaseModel):
     mode: str
     rag_context_used: list[str]
     retry_count: int
+    plot_base64: Optional[str] = None
 
 
 class QueryResponse(BaseModel):

@@ -1,4 +1,5 @@
 import asyncio
+import json
 import logging
 from datetime import datetime, timezone
 from models.schemas import QueryResponse, AssistantResponse
@@ -129,7 +130,9 @@ class ChatOrchestrator:
 
         # 4. Cache check
         dataset_hash = self.query_cache.compute_dataset_hash(storage_path)
-        cached = self.query_cache.get(query, dataset_hash)
+        chat_history = self.chat_manager.get_recent_context(chat_id, n=12)
+        cache_context = json.dumps(chat_history, sort_keys=True, default=str)
+        cached = self.query_cache.get(query, dataset_hash, context=cache_context)
         if cached:
             logger.info("Cache hit for query: %s", query[:60])
             assistant_msg = self.chat_manager.add_message(
@@ -215,7 +218,8 @@ class ChatOrchestrator:
             )
 
         # 9. Cache the result
-        self.query_cache.set(query, dataset_hash, response_data)
+        if response_data.get("result_type") not in ("error", "rejection"):
+            self.query_cache.set(query, dataset_hash, response_data, context=cache_context)
 
         # 10. Persist + return
         return self._store_and_return(
@@ -241,6 +245,7 @@ class ChatOrchestrator:
         last_code = ""
         last_error = ""
         exec_result = None
+        eval_result = None
         retry_count = 0
 
         for attempt in range(self.max_retry_count + 1):
@@ -281,7 +286,7 @@ class ChatOrchestrator:
             eval_result = await self.evaluator.evaluate(query, code, exec_result)
 
             last_code = code
-            last_error = exec_result.error or ""
+            last_error = exec_result.error or (eval_result.reason if not eval_result.is_relevant else "")
 
             if not self.evaluator.should_retry(eval_result, attempt):
                 break
@@ -292,7 +297,7 @@ class ChatOrchestrator:
             retry_count += 1
 
         # Success path: enrich with cognitive engine
-        if exec_result is not None and exec_result.success:
+        if exec_result is not None and exec_result.success and eval_result and eval_result.is_valid and eval_result.is_relevant:
             stats_summary = self.cognitive_engine.build_stats_summary(summary_stats)
             cognitive_output = await self.cognitive_engine.analyze(
                 query=query,
@@ -487,7 +492,7 @@ class ChatOrchestrator:
                         if response_data.get("result_type") not in ("error", "rejection")
                         else "error"
                     ),
-                    error=None,
+                    error=response_data.get("insight") if response_data.get("result_type") in ("error", "rejection") else None,
                     retry_count=response_data.get("retry_count", 0),
                     exec_time=0.0,
                 )
@@ -524,6 +529,7 @@ class ChatOrchestrator:
                 confidence=response_data.get("confidence", "medium"),
                 code=response_data.get("code", ""),
                 result=response_data.get("result"),
+                plot_base64=response_data.get("plot_base64"),
                 result_type=response_data.get("result_type", "error"),
                 mode=response_data.get("mode", "executor"),
                 rag_context_used=response_data.get("rag_context_used", []),
