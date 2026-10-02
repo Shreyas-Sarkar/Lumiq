@@ -117,6 +117,8 @@ async def send_query(
 
     chat_manager = request.app.state.chat_manager
     orchestrator = request.app.state.orchestrator
+    if not orchestrator:
+        raise HTTPException(410, "Legacy code generation is retired. Use the investigation workspace; previous messages remain readable.")
 
     try:
         chat_manager.get_chat_by_id(

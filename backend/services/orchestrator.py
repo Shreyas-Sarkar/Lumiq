@@ -116,7 +116,7 @@ class ChatOrchestrator:
         # 3. Load dataframe
         try:
             df = self.dataset_manager.load_dataframe_from_storage(
-                dataset["storage_path"]
+                dataset["storage_path"], owner=user_id
             )
         except FileNotFoundError:
             response_data = self.explanation_service.format_rejection_response(

@@ -54,7 +54,7 @@ COMMON_ALIASES = {
 # ---------------------------------------------------------------------------
 
 def matches_column(query_clean: str, normalized_columns: list[str]) -> bool:
-    """Return True if any normalized column name appears as a substring in the query."""
+    """Return True if any normalized column name appears as a whole word in the query."""
     for col in normalized_columns:
         if col and re.search(r"(?<!\w)" + re.escape(col) + r"(?!\w)", query_clean):
             return True
@@ -74,27 +74,10 @@ def matches_alias(query_clean: str) -> bool:
 # ---------------------------------------------------------------------------
 
 class ModeClassifier:
-    """
-    Deterministic 4-mode query classifier.
+    """Route explicit definitions and off-topic requests before computations.
 
-    Output modes:
-        executor   — directly computable query; code is generated and executed
-        hybrid     — relationship/comparative query; MUST compute metrics
-        concept    — definitional query; NO code generated or executed
-        irrelevant — off-topic; rejected immediately
-
-    Decision order (strict, top-to-bottom):
-        1. Schema-aware column/alias match          → executor
-        2. EXECUTOR_PATTERNS keyword match          → executor
-        3. HYBRID_PATTERNS keyword match            → hybrid
-        4. CONCEPT_PATTERNS keyword match           → concept
-        5. IRRELEVANT_PATTERNS keyword match        → irrelevant
-        6. Smart default fallback                   → concept | executor
-
-    Architectural invariant:
-        concept  → NEVER triggers execution
-        hybrid   → ALWAYS triggers execution
-        executor → ALWAYS triggers execution
+    Dataset-aware comparisons require computation. Explicit general definitions
+    do not consume execution quota. Whole-word column matches avoid alias collisions.
     """
 
     def classify(self, query: str, df=None) -> str:
