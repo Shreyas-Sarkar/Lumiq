@@ -1,5 +1,6 @@
 "use client";
 
+import BrandMark from "@/components/BrandMark";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
@@ -8,10 +9,10 @@ import { Loader2, ArrowRight } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail]       = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError]       = useState("");
-  const [loading, setLoading]   = useState(false);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -19,10 +20,19 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({email,password});
-      if (error) {setError(error.message); return;}
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      if (error) {
+        setError(error.message);
+        return;
+      }
       if (data.session) router.push("/chat");
-      else setError("Sign-in did not return a session. Check your email confirmation.");
+      else
+        setError(
+          "Sign-in did not return a session. Check your email confirmation.",
+        );
     } catch {
       setError("An unexpected error occurred. Please try again.");
     } finally {
@@ -32,35 +42,38 @@ export default function LoginPage() {
 
   return (
     <div
-      className="min-h-screen flex items-center justify-center px-4"
+      className="auth-page min-h-screen flex items-center justify-center px-4"
       style={{ background: "var(--bg)" }}
     >
       {/* Card */}
       <div
         className="w-full max-w-sm rounded-xl overflow-hidden"
-        style={{ border: "1px solid var(--border-strong)", background: "var(--surface)" }}
+        style={{
+          border: "1px solid var(--border-strong)",
+          background: "var(--surface)",
+        }}
       >
         {/* Header */}
         <div
           className="px-8 py-6"
-          style={{ borderBottom: "1px solid var(--border)", background: "var(--surface-2)" }}
+          style={{
+            borderBottom: "1px solid var(--border)",
+            background: "var(--surface-2)",
+          }}
         >
           <div className="flex items-center gap-2 mb-4">
-            <div
-              className="w-6 h-6 rounded flex items-center justify-center text-[11px] font-bold"
-              style={{
-                background: "var(--surface-3)",
-                border: "1px solid var(--border-strong)",
-                color: "var(--text)",
-              }}
+            <BrandMark size={26} />
+            <span
+              className="font-semibold text-sm"
+              style={{ color: "var(--text)" }}
             >
-              L
-            </div>
-            <span className="font-semibold text-sm" style={{ color: "var(--text)" }}>
               Lumiq
             </span>
           </div>
-          <h1 className="text-base font-semibold" style={{ color: "var(--text)" }}>
+          <h1
+            className="text-base font-semibold"
+            style={{ color: "var(--text)" }}
+          >
             Sign in to your workspace
           </h1>
           <p className="text-xs mt-1" style={{ color: "var(--muted)" }}>

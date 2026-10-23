@@ -2,11 +2,11 @@ import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
 
-const manrope = localFont({
-  src: "./fonts/Manrope-Variable.ttf",
+const inter = localFont({
+  src: "./fonts/InterVariable.woff2",
   variable: "--font-sans",
   display: "swap",
-  weight: "200 800",
+  weight: "100 900",
 });
 
 export const metadata: Metadata = {
@@ -21,7 +21,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={manrope.variable}>
+    <html lang="en" className={inter.variable}>
       <body
         className="min-h-screen"
         style={{ backgroundColor: "var(--bg)", color: "var(--text)" }}

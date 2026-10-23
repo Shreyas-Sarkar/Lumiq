@@ -1,5 +1,6 @@
 "use client";
 
+import BrandMark from "@/components/BrandMark";
 import { formatDistanceToNow } from "date-fns";
 import { Plus, Database, LogOut, BarChart3 } from "lucide-react";
 import { Chat } from "@/types";
@@ -37,17 +38,11 @@ export default function Sidebar({
         style={{ borderBottom: "1px solid var(--border)" }}
       >
         <div className="flex items-center gap-2 mb-4">
-          <div
-            className="w-6 h-6 rounded flex items-center justify-center text-[11px] font-bold flex-shrink-0"
-            style={{
-              background: "var(--surface-3)",
-              border: "1px solid var(--border-strong)",
-              color: "var(--text)",
-            }}
+          <BrandMark size={26} />
+          <span
+            className="font-semibold text-sm"
+            style={{ color: "var(--text)" }}
           >
-            L
-          </div>
-          <span className="font-semibold text-sm" style={{ color: "var(--text)" }}>
             Lumiq
           </span>
         </div>
@@ -61,12 +56,16 @@ export default function Sidebar({
             color: "var(--text)",
           }}
           onMouseEnter={(e) => {
-            (e.currentTarget as HTMLButtonElement).style.background = "var(--surface-3)";
-            (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(255,255,255,0.15)";
+            (e.currentTarget as HTMLButtonElement).style.background =
+              "var(--surface-3)";
+            (e.currentTarget as HTMLButtonElement).style.borderColor =
+              "rgba(255,255,255,0.15)";
           }}
           onMouseLeave={(e) => {
-            (e.currentTarget as HTMLButtonElement).style.background = "var(--surface-2)";
-            (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--border-strong)";
+            (e.currentTarget as HTMLButtonElement).style.background =
+              "var(--surface-2)";
+            (e.currentTarget as HTMLButtonElement).style.borderColor =
+              "var(--border-strong)";
           }}
         >
           <Plus size={13} />
@@ -94,7 +93,11 @@ export default function Sidebar({
           </div>
         ) : chats.length === 0 ? (
           <div className="px-4 py-6 text-center">
-            <BarChart3 size={22} className="mx-auto mb-2 opacity-20" style={{ color: "var(--muted)" }} />
+            <BarChart3
+              size={22}
+              className="mx-auto mb-2 opacity-20"
+              style={{ color: "var(--muted)" }}
+            />
             <p className="text-xs" style={{ color: "var(--muted)" }}>
               No analyses yet
             </p>
@@ -135,7 +138,9 @@ export default function Sidebar({
                     <Database
                       size={11}
                       className="flex-shrink-0"
-                      style={{ color: isActive ? "var(--accent)" : "var(--muted)" }}
+                      style={{
+                        color: isActive ? "var(--accent)" : "var(--muted)",
+                      }}
                     />
                   ) : (
                     <BarChart3
@@ -183,7 +188,10 @@ export default function Sidebar({
         >
           {userEmail.charAt(0).toUpperCase() || "U"}
         </div>
-        <span className="text-xs truncate flex-1" style={{ color: "var(--muted)" }}>
+        <span
+          className="text-xs truncate flex-1"
+          style={{ color: "var(--muted)" }}
+        >
           {userEmail}
         </span>
         <button
@@ -195,7 +203,8 @@ export default function Sidebar({
             ((e.currentTarget as HTMLButtonElement).style.color = "var(--text)")
           }
           onMouseLeave={(e) =>
-            ((e.currentTarget as HTMLButtonElement).style.color = "var(--muted)")
+            ((e.currentTarget as HTMLButtonElement).style.color =
+              "var(--muted)")
           }
         >
           <LogOut size={13} />

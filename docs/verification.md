@@ -41,7 +41,7 @@ Local results, not a production-readiness certification.
   the additive investigation migration was applied atomically; duplicate dataset
   preflight was clear. Browser health reports database/workspace ready. The separate
   app connector targets another organization; use the authenticated personal CLI.
-- Self-hosted Manrope font and license included; no browser request to a font CDN.
+- Self-hosted Inter includes its OFL license; no browser request to a font CDN.
   Homepage sample uses local synthetic values and spends no provider quota.
 
 ## Live browser verification — 2026-10-23
@@ -84,6 +84,31 @@ or production hosting rollout was performed. Model interpretation remains fallib
 Supabase security advisors still report existing GraphQL schema visibility,
 public trigger-function reachability, and disabled leaked-password protection;
 this pass is not a clean security-audit claim.
+
+## Homepage refinement — 2026-10-23
+
+After the live functional pass and workspace renaming, the homepage was refined
+from the earlier layout using Linear/Fanout as visual references. The owner then
+selected a closer Linear direction: near-black/off-white, Inter, restrained borders.
+Shared tokens and the local font also apply to workspace, login, signup, and dialogs.
+An original aperture mark replaces the boxed initial in all navigation/auth locations
+and the SVG favicon. Browser inspection confirms the generated icon metadata.
+Native CSS and a small IntersectionObserver/WAAPI leaf provide short, finite motion;
+reduced motion cancels reveals and removes CSS animation/transforms. No animation
+library, font CDN, or inference request is required for homepage interactions.
+
+Browser checks cover all three sample views, source CSV download, all three trace
+views, keyboard activation, section anchors, and workspace entry. Viewport checks
+at desktop, tablet, and narrow/mobile sizes found no horizontal page overflow.
+Login/signup were visually checked at a narrow viewport without creating an account;
+input focus remains visible. The themed workspace retains its saved results and
+rename dialog. A fresh page load after compilation produced no browser errors. The current browser
+control does not expose reduced-motion emulation; that fallback was source-reviewed,
+not re-certified by a live media-preference switch in this pass.
+
+A subsequently revoked Supabase session returned `session_not_found`. The explicit
+sign-in recovery path restored both renamed workspaces and saved results. This is
+not evidence that every possible refresh/network interruption is resolved.
 
 ## Local calculation benchmark
 

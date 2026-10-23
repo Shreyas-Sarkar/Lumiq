@@ -1,4 +1,5 @@
 "use client";
+import BrandMark from "@/components/BrandMark";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -468,7 +469,8 @@ export default function InvestigationWorkspace({
         aria-label="Workspaces and investigations"
       >
         <a className="workspace-brand" href="/chat">
-          <span className="brand-mark">L</span>Lumiq
+          <BrandMark />
+          Lumiq
           <span className="brand-caption">DATA WORKSPACE</span>
         </a>
         <button

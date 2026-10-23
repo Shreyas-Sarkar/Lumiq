@@ -1,17 +1,22 @@
+import BrandMark from "@/components/BrandMark";
 import Link from "next/link";
 import { ArrowRight, ArrowUpRight, GitBranch, ShieldCheck } from "lucide-react";
 import SampleInvestigation from "@/components/SampleInvestigation";
+import HomeMotion from "@/components/HomeMotion";
+import InvestigationTrace from "@/components/InvestigationTrace";
 import "./home.css";
 
 export default function Home() {
   return (
     <div className="lumiq-home">
+      <HomeMotion />
       <a className="home-skip" href="#main">
         Skip to content
       </a>
       <header className="home-nav home-container">
         <Link className="home-brand" href="/" aria-label="Lumiq home">
-          <span className="brand-mark">L</span>Lumiq
+          <BrandMark />
+          Lumiq
         </Link>
         <nav aria-label="Main navigation">
           <a href="#approach">The approach</a>
@@ -43,7 +48,17 @@ export default function Home() {
               Open your workspace <ArrowUpRight size={20} />
             </Link>
           </div>
-          <SampleInvestigation />
+          <div className="home-sample-stage">
+            <div
+              className="sample-sheet sample-sheet-back"
+              aria-hidden="true"
+            />
+            <div
+              className="sample-sheet sample-sheet-front"
+              aria-hidden="true"
+            />
+            <SampleInvestigation />
+          </div>
         </section>
         <div className="home-principle home-container">
           <span>A question is the beginning.</span>
@@ -57,7 +72,7 @@ export default function Home() {
           className="home-approach home-container"
           aria-labelledby="approach-title"
         >
-          <div className="approach-heading">
+          <div className="approach-heading" data-reveal>
             <h2 id="approach-title">
               An answer you can
               <br />
@@ -69,7 +84,7 @@ export default function Home() {
             </p>
           </div>
           <div className="approach-steps">
-            <article>
+            <article data-reveal>
               <span className="step-symbol" aria-hidden="true">
                 ↗
               </span>
@@ -81,7 +96,7 @@ export default function Home() {
                 </p>
               </div>
             </article>
-            <article>
+            <article data-reveal>
               <span className="step-symbol" aria-hidden="true">
                 ＝
               </span>
@@ -93,7 +108,7 @@ export default function Home() {
                 </p>
               </div>
             </article>
-            <article>
+            <article data-reveal>
               <span className="step-symbol" aria-hidden="true">
                 ↳
               </span>
@@ -112,7 +127,7 @@ export default function Home() {
           className="home-engine home-container"
           aria-labelledby="engine-title"
         >
-          <div className="engine-top">
+          <div className="engine-top" data-reveal>
             <GitBranch size={25} strokeWidth={1.5} />
             <h2 id="engine-title">
               Two specialists.
@@ -124,20 +139,7 @@ export default function Home() {
               interprets the evidence.
             </p>
           </div>
-          <ol className="engine-flow" aria-label="Investigation workflow">
-            <li>
-              <span>Planner</span>
-              <small>Question → calculation plan</small>
-            </li>
-            <li className="flow-tool">
-              <span>Analytical tools</span>
-              <small>Plan → measured evidence</small>
-            </li>
-            <li>
-              <span>Analyst</span>
-              <small>Evidence → interpretation</small>
-            </li>
-          </ol>
+          <InvestigationTrace />
           <div className="engine-resilience">
             <ShieldCheck size={20} />
             <p>
@@ -149,6 +151,7 @@ export default function Home() {
         </section>
         <section
           className="home-finale home-container"
+          data-reveal
           aria-labelledby="finale-title"
         >
           <div>
@@ -166,6 +169,7 @@ export default function Home() {
       </main>
       <footer className="home-footer home-container">
         <Link className="home-brand" href="/">
+          <BrandMark size={24} />
           Lumiq
         </Link>
         <p>From question to evidence.</p>

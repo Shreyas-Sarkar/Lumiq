@@ -1,5 +1,6 @@
 "use client";
 
+import BrandMark from "@/components/BrandMark";
 import { useState } from "react";
 import {
   ChevronDown,
@@ -278,8 +279,8 @@ export default function MessageBubble({ message, onFollowUpClick }: MessageBubbl
 
 function Avatar() {
   return (
-    <div className="w-7 h-7 rounded-full bg-gradient-to-br from-purple-600 to-indigo-600 flex items-center justify-center flex-shrink-0 text-xs font-bold mt-0.5 shadow-md">
-      L
+    <div className="w-7 h-7 flex items-center justify-center flex-shrink-0 mt-0.5">
+      <BrandMark size={24} />
     </div>
   );
 }

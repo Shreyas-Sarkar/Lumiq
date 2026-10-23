@@ -27,7 +27,7 @@ Backend verified against source on 2026-10-02; frontend updated on 2026-10-23.
 
 | Area | Entry points |
 | --- | --- |
-| Homepage | `frontend/app/page.tsx`, `home.css`, `frontend/components/SampleInvestigation.tsx` |
+| Homepage | `frontend/app/page.tsx`, `home.css`, `frontend/components/SampleInvestigation.tsx`, `InvestigationTrace.tsx`, `HomeMotion.tsx` |
 | Workspace UI | `frontend/components/InvestigationWorkspace.tsx`, `PlanEditor.tsx` |
 | Browser session | `frontend/hooks/useSession.ts`, `frontend/lib/supabase.ts` |
 | API / UI contracts | `frontend/lib/api.ts`, `frontend/types/investigations.ts` |
