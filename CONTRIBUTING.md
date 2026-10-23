@@ -1,27 +1,18 @@
-# Development workflow
+# Development
 
-Read `AGENTS.md` for boundaries and `CONTEXT.md` for navigation. Local tickets
-follow `docs/agents/issue-tracker.md`.
-
-## Setup
-
-Use a Python version compatible with `backend/runtime.txt`. Backend imports
-expect `backend/` as working directory.
+Read `AGENTS.md` and `CONTEXT.md`. Use Python 3.11+ and Node.js 22+.
 
 ```sh
 cd backend
-python3 -m venv .venv
+python3.11 -m venv .venv
 . .venv/bin/activate
 pip install -r requirements.txt
 cp -n .env.example .env
-uvicorn main:app --reload
 ```
 
-Fill credentials before starting. When needed, provision the migration in your
-development Supabase project after inspecting existing schema. Its `CREATE TABLE
-IF NOT EXISTS` clauses do not upgrade existing table definitions.
-
-In another terminal:
+Populate backend credentials without overwriting an existing environment. Follow
+`docs/runbook.md` for the database migration/private bucket and workspace flag.
+Start `uvicorn main:app --reload` from `backend/`.
 
 ```sh
 cd frontend
@@ -30,41 +21,33 @@ cp -n .env.example .env.local
 npm run dev
 ```
 
-Fill frontend public Supabase configuration and API URL. Preserve existing
-environment files. Provider and service-role keys stay on the backend and never
-use `NEXT_PUBLIC_` names.
+Set the public Supabase URL/anon key and backend API URL. Secrets never belong in
+`NEXT_PUBLIC_` variables. Frontend builds use webpack because Turbopack workers
+could not bind their local evaluation port in the development sandbox.
 
-## Offline verification
+## Verification
 
-From the repository root:
+From the root, `bash scripts/check.sh` checks Python syntax and frontend types.
+`bash scripts/test.sh` runs the offline Python behavior suite. It uses
+`backend/.venv` or the existing `backend/venv`; set `LUMIQ_TEST_PYTHON` to override.
 
-```sh
-bash scripts/check.sh
-```
+Run `npm run build` from `frontend/`. With the frontend running on localhost:3000,
+run `npm test` there for browser journeys. The suite mocks auth/API boundaries and
+never uses live model quota. Screenshots/traces go to ignored `output/playwright/`.
 
-This checks Python syntax without importing services or writing bytecode, then
-TypeScript with incremental output disabled. Requires Python 3 and installed
-frontend dependencies. No provider calls or package installs. Missing prerequisites
-or check failures exit nonzero. It does not establish runtime correctness.
+`python scripts/benchmark.py` uses known-answer sample data and measures local
+calculation time and peak process memory. `scripts/check-database.sql` runs against
+a disposable Postgres database after the migrations; it rolls back its fixtures.
+It expects Supabase-compatible auth/storage schemas (or a local test bootstrap).
 
-For frontend implementation changes, also run `npm run build` in `frontend/`;
-it writes `.next/`. `npm run lint` currently has no checked-in ESLint configuration
-and may prompt to initialize one; it is not the automated baseline.
+From `backend/`, `python ../scripts/smoke-models.py` makes up to two small requests
+per configured provider. Run only as an intentional live check; no key is printed.
+Record the provider/model/outcome and distinguish access checks from analytic evals.
 
-## Behavioral verification
+## Changes
 
-There is no checked-in application test suite yet. Add focused regression tests
-for meaningful changes at public boundaries; use fake provider/database seams
-offline. Prioritize routing, contextual follow-ups, charts, ownership, failed
-execution, and quota interruption/recovery.
-
-Live integration checks need a small bounded request budget. Report provider,
-model, outcome, and limits without credentials. `/health` has a known status bug;
-see `docs/known-issues.md` before treating it as deployment validation.
-
-## Reviewing changes
-
-Separate application changes from agent/documentation setup. Reconcile backend
-and frontend contracts and update affected context documents. Preserve the MIT
-license and provenance when updating vendored skills. Describe verification
-evidence and remaining uncertainty in the handoff.
+Use descriptive branch names without an assistant-name prefix. GitHub writes use
+only `Shreyas-Sarkar`; verify login and remote before each push. Make small verified
+commits. Reconcile frontend/backend contracts, update affected context, and retain
+skill provenance/licenses. Deployment requires the concrete release checks in the
+runbook; a green build alone does not establish live behavior.

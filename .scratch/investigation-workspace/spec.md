@@ -1,12 +1,14 @@
 # Lumiq investigation workspace
 
-Status: planned
+Status: implementation verified locally; live release pending
 Label: ready-for-agent
 Date: 2026-10-02
 Planning workflow: Matt Pocock `to-spec`, pinned in this repository.
 
 This is a reviewable implementation plan. Repository setup is complete; the
-application changes below have not been implemented. The owner confirmed the
+core application changes are implemented on the investigation-workspace branch.
+See docs/verification.md for the verified scope and remaining live release gates.
+The owner confirmed the
 API behavior test seam plus a small set of browser journeys.
 
 ## Problem Statement

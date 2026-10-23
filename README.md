@@ -1,61 +1,50 @@
 # Lumiq
 
-A CSV-based AI analysis prototype. Upload a dataset, ask a question, and inspect
-computed results, generated Python, charts, and model-written interpretations.
+Lumiq turns a CSV question into an inspectable calculation plan, computed evidence,
+and a saved investigation. It uses two model specialists—planner and analyst—in a
+self-hosted LangGraph, with deterministic Pandas tools between them.
 
-The pipeline is execution-first: exhausted computation failures return an error
-instead of a model-generated replacement answer. Successful execution does not
-guarantee the code answered the intended question or that its interpretation is
-correct. The current runner is in-process, not an isolated execution sandbox.
+- Profile missing values, duplicates, data types, and date coverage.
+- Calculate aggregates, groups, period changes, contributions, and correlations.
+- Inspect tables, charts, filters, assumptions, and evidence-linked observations.
+- Clarify ambiguous questions, edit calculations, download CSV results, and revisit runs.
+- Switch between Gemini and Groq within bounded attempts and persisted quota limits.
+- Retain completed evidence when interpretation fails; resume from saved stages.
+- Preserve historical chats as readable conversations. Generated Python execution
+  is disabled by default on the new path.
 
-## Current stack
+## Stack and limits
 
-- Frontend: Next.js, React, Tailwind CSS.
-- Backend: FastAPI, Pandas, NumPy, Matplotlib/Seaborn.
-- Accounts/records: Supabase Auth/Postgres.
-- Dataset bytes: backend local filesystem.
-- Model calls: configurable OpenAI-compatible chat-completions endpoint.
-- Optional metadata retrieval: Qdrant and Cohere.
+Next.js 16 / React 19 frontend on Vercel; FastAPI / Python LangGraph backend on
+Render; Supabase Auth, Postgres, and private Storage. No hosted agent subscription,
+Jev dependency, or paid fallback. Maximum upload: 5 MB; analysis: 100,000 rows,
+100 MB parsed data, four steps, and six provider attempts per run.
 
-One CSV per chat. Default upload ceiling: 50 MB; processing capacity depends on
-memory and concurrency. Progress labels are currently timer-driven, not live events.
-Gemini inference and a multi-agent graph are planned, not implemented. Jev is
-excluded from the planned architecture.
+Free Render can sleep. Polling and startup recovery advance unfinished work while
+the server is awake. Provider capacity cannot be guaranteed; failures show a reason
+and preserve available evidence. Qualitative model interpretation still needs judgment.
 
-## Development
+## Run and verify
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for setup and server commands. Backend startup
-requires Supabase configuration and `LLM_API_KEYS`; frontend needs its public
-Supabase configuration and API URL. Start from the directory-specific environment
-examples, preserving existing files. Qdrant/Cohere are optional.
-
-After installing frontend dependencies, run from the root:
+See [development instructions](CONTRIBUTING.md), [configuration and demo runbook](docs/runbook.md),
+and [verification report](docs/verification.md). Fresh databases need the initial
+schema and the additive investigation migration before enabling the new backend.
 
 ```sh
 bash scripts/check.sh
+bash scripts/test.sh
 ```
 
-This checks backend syntax and frontend types without provider calls. There is no
-checked-in application test suite yet; live integrations need separate checks.
+Browser journeys live in `frontend/tests/`; run `npm test` with the frontend running
+on localhost:3000. Tests fake external providers and storage. [Sample CSVs](samples/README.md)
+include independently calculated expected answers.
 
-## AI-assisted development
+## Repository navigation
 
-- [AGENTS.md](AGENTS.md): concise project instructions.
-- [CONTEXT.md](CONTEXT.md): current implementation map.
-- [GLOSSARY.md](GLOSSARY.md): domain vocabulary.
-- [Known limitations](docs/known-issues.md): observed gaps and validation limits.
-- [Investigation workspace spec](.scratch/investigation-workspace/spec.md): phased redesign plan.
-- [Local ticket workflow](docs/agents/issue-tracker.md).
-- [Agent context decision](docs/adr/0001-project-local-agent-context.md).
-- [Installed skills](.agents/skills/SOURCES.md): pinned Matt Pocock workflows with MIT attribution.
+- [Agent instructions](AGENTS.md) and [current architecture](CONTEXT.md).
+- [Vocabulary](GLOSSARY.md), [architecture decisions](docs/adr/), and [limitations](docs/known-issues.md).
+- [Original implementation specification](.scratch/investigation-workspace/spec.md).
+- [Skill provenance](.agents/skills/SOURCES.md).
 
-## Deployment constraints
-
-The intended deployment is a Render free backend and Vercel frontend with
-rate-limited model APIs. Current CSV bytes, cache, and request queue are temporary
-process/disk state. They need durability work before reliable restart recovery.
-
-Root `idea.md`, diagram files, and `vercel.json` are historical design/deployment
-material. They retain obsolete ChromaDB and schema/mode references; use current
-code and `CONTEXT.md` for implementation decisions. Checked-in deployment files
-are not proof of the active production configuration.
+Current implementation and local verification do not establish deployed demo
+readiness. Follow the runbook's live release checks before demonstrating production.

@@ -31,3 +31,12 @@ that can be revisited.
 **Analysis plan**: The operations and assumptions selected to answer a query.
 
 **Finding**: A conclusion linked to supporting evidence and its limitations.
+
+**Workspace**: The user's place for one dataset and its investigations, including
+any earlier conversation.
+
+**Investigation run**: One attempt to answer an investigation using a specific
+plan and dataset version. A revised plan produces a separate run.
+
+**Contribution**: A category's measured share of an additive change between
+periods. It does not identify the business cause of that change.
