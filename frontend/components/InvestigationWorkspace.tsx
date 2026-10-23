@@ -11,12 +11,14 @@ import {
   RefreshCw,
   ChevronRight,
   PanelRightClose,
+  Pencil,
 } from "lucide-react";
 import { useSession } from "@/hooks/useSession";
 import { signOut } from "@/lib/auth";
 import {
   apiError,
   createChat,
+  renameWorkspace,
   getChat,
   getChats,
   getInvestigations,
@@ -208,15 +210,22 @@ export default function InvestigationWorkspace({
   const [showUpload, setShowUpload] = useState(false);
   const [editPlan, setEditPlan] = useState(false);
   const dialog = useRef<HTMLDialogElement>(null);
+  const renameDialog = useRef<HTMLDialogElement>(null);
+  const [renameTarget, setRenameTarget] = useState<Chat | null>(null);
+  const [workspaceName, setWorkspaceName] = useState("");
+  const [renameError, setRenameError] = useState("");
+  const [renaming, setRenaming] = useState(false);
+  const workspace = chats.find((chat) => chat.id === chatId);
+  const workspaceTitle =
+    workspace?.title === "New Chat" ? "Untitled workspace" : workspace?.title;
   const loadVersion = useRef(0);
   const request = useRef<{ fingerprint: string; id: string } | null>(null);
   const current = runs.find((r) => r.id === active);
   const numericColumns =
     profile?.columns.filter((column) => column.kind === "number") || [];
   const starterMetric =
-    numericColumns.find((column) =>
-      /amount|revenue|sales/i.test(column.name),
-    )?.name ||
+    numericColumns.find((column) => /amount|revenue|sales/i.test(column.name))
+      ?.name ||
     numericColumns.find((column) => !/(^id$|_id$)/i.test(column.name))?.name;
   const starterCategory =
     profile?.columns.find((column) => /city|region|category/i.test(column.name))
@@ -296,6 +305,7 @@ export default function InvestigationWorkspace({
     setEvidenceId(null);
     setQuestion("");
     request.current = null;
+    setRenameTarget(null);
   }, [chatId]);
   useEffect(() => {
     void load();
@@ -327,6 +337,32 @@ export default function InvestigationWorkspace({
     if (showUpload) dialog.current?.showModal();
     else dialog.current?.close();
   }, [showUpload]);
+
+  useEffect(() => {
+    if (renameTarget) renameDialog.current?.showModal();
+    else renameDialog.current?.close();
+  }, [renameTarget]);
+
+  async function saveWorkspaceName() {
+    if (!renameTarget || !workspaceName.trim() || !token) return;
+    setRenaming(true);
+    setRenameError("");
+    try {
+      const renamed = await renameWorkspace(
+        renameTarget.id,
+        workspaceName.trim(),
+        token,
+      );
+      setChats((previous) =>
+        previous.map((chat) => (chat.id === renamed.id ? renamed : chat)),
+      );
+      setRenameTarget(null);
+    } catch (failure) {
+      setRenameError(apiError(failure));
+    } finally {
+      setRenaming(false);
+    }
+  }
 
   async function newWorkspace() {
     setBusy(true);
@@ -447,6 +483,9 @@ export default function InvestigationWorkspace({
           {chats.map((chat) => (
             <button
               key={chat.id}
+              title={
+                chat.title === "New Chat" ? "Untitled workspace" : chat.title
+              }
               className={`nav-item ${chat.id === chatId ? "active" : ""}`}
               onClick={() => router.push(`/chat/${chat.id}`)}
               aria-current={chat.id === chatId ? "page" : undefined}
@@ -514,18 +553,37 @@ export default function InvestigationWorkspace({
       <main className="workspace-main">
         <header className="workspace-header">
           <div>
-            <span className="eyebrow">Investigation workspace</span>
+            <span className="eyebrow">
+              {workspaceTitle || "Investigation workspace"}
+            </span>
             <p>
               {dataset?.filename || "Turn a CSV into an inspectable answer"}
             </p>
           </div>
-          <button
-            className="icon-button"
-            aria-label="Reload workspace"
-            onClick={load}
-          >
-            <RefreshCw size={17} />
-          </button>
+          <div className="workspace-actions">
+            {workspace && (
+              <button
+                className="icon-button"
+                aria-label="Rename workspace"
+                title="Rename workspace"
+                disabled={loading || busy}
+                onClick={() => {
+                  setWorkspaceName(workspaceTitle || "");
+                  setRenameError("");
+                  setRenameTarget(workspace);
+                }}
+              >
+                <Pencil size={17} />
+              </button>
+            )}
+            <button
+              className="icon-button"
+              aria-label="Reload workspace"
+              onClick={load}
+            >
+              <RefreshCw size={17} />
+            </button>
+          </div>
         </header>
         {(error || sessionError) && (
           <div role="alert" className="workspace-error">
@@ -965,6 +1023,58 @@ export default function InvestigationWorkspace({
           </div>
         )}
       </main>
+      <dialog
+        ref={renameDialog}
+        className="upload-dialog"
+        aria-labelledby="rename-workspace-title"
+        onCancel={(event) => {
+          if (renaming) event.preventDefault();
+          else setRenameTarget(null);
+        }}
+      >
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            void saveWorkspaceName();
+          }}
+        >
+          <h2 id="rename-workspace-title">Rename workspace</h2>
+          <p>
+            Give this dataset and its investigations a name you’ll recognize.
+          </p>
+          <label htmlFor="workspace-name">Workspace name</label>
+          <input
+            id="workspace-name"
+            autoFocus
+            required
+            maxLength={120}
+            value={workspaceName}
+            onChange={(event) => setWorkspaceName(event.target.value)}
+            disabled={renaming}
+          />
+          {renameError && (
+            <p role="alert" className="upload-error">
+              {renameError}
+            </p>
+          )}
+          <div className="workspace-actions">
+            <button
+              type="button"
+              className="text-button"
+              disabled={renaming}
+              onClick={() => setRenameTarget(null)}
+            >
+              Cancel
+            </button>
+            <button
+              className="primary-button"
+              disabled={renaming || !workspaceName.trim()}
+            >
+              {renaming ? "Saving…" : "Save name"}
+            </button>
+          </div>
+        </form>
+      </dialog>
       <dialog
         ref={dialog}
         className="upload-dialog"

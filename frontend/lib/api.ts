@@ -18,6 +18,21 @@ export async function createChat(token: string): Promise<Chat> {
   return res.data;
 }
 
+export async function renameWorkspace(
+  chatId: string,
+  title: string,
+  token: string,
+): Promise<Chat> {
+  const res = await api.post(
+    `/api/chats/${chatId}/rename`,
+    { title },
+    {
+      headers: { Authorization: `Bearer ${token}` },
+    },
+  );
+  return res.data;
+}
+
 export async function getChats(token: string): Promise<Chat[]> {
   const res = await api.get("/api/chats", {
     headers: { Authorization: `Bearer ${token}` },

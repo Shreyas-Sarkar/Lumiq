@@ -71,6 +71,9 @@ for this pass. The CSV and credentials are not committed.
 - Stopping the API shows an explicit local-backend message while saved results
   remain readable. Restart/retry restores access; repeated restarts recover data
   from private storage and persisted run state.
+- Workspace rename saves independently for both workspaces and survives reload.
+  Whitespace is trimmed, blank names cannot be saved, and cancelling preserves
+  the existing name. The CSV and saved investigations remain intact.
 - Browser access to the unauthenticated chats endpoint is rejected. This pass did
   not create a second account to re-test foreign ownership; that boundary retains
   the earlier mocked API and SQL coverage.

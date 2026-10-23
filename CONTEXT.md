@@ -5,7 +5,8 @@ Backend verified against source on 2026-10-02; frontend updated on 2026-10-23.
 ## Flow
 
 1. Supabase authenticates the browser; the backend validates bearer tokens and
-   verifies workspace ownership on each public operation.
+   verifies workspace ownership on each public operation. Workspace names can be
+   changed through the owner-filtered rename endpoint; trimmed names are 1–120 characters.
 2. Upload validates a bounded CSV, stores its bytes in a private owner-scoped
    Supabase object, and records an immutable content hash and deterministic profile.
 3. Creating an investigation persists a queued run and returns its ID.

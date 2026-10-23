@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field
 from typing import Any, Optional
 from datetime import datetime
 
@@ -31,6 +31,11 @@ class UploadResponse(BaseModel):
 
 class ChatCreateRequest(BaseModel):
     title: str = "New Chat"
+
+
+class ChatRenameRequest(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+    title: str = Field(min_length=1, max_length=120)
 
 
 class ChatResponse(BaseModel):
