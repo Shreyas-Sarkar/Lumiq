@@ -19,38 +19,10 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      // Step 1: attempt sign-in
-      const { data: signInData, error: signInError } =
-        await supabase.auth.signInWithPassword({ email, password });
-
-      if (signInData.session) {
-        router.push("/chat");
-        return;
-      }
-
-      // Step 2: sign-in failed — try signup (new user)
-      if (signInError) {
-        const { data: signUpData, error: signUpError } =
-          await supabase.auth.signUp({ email, password });
-
-        if (signUpData.session) {
-          router.push("/chat");
-          return;
-        }
-
-        if (
-          signUpError?.message?.toLowerCase().includes("already registered") ||
-          signUpError?.message?.toLowerCase().includes("already been registered")
-        ) {
-          setError("Incorrect password. Please try again.");
-        } else if (signUpError) {
-          setError(signUpError.message);
-        } else {
-          setError(
-            "Account created but email confirmation is required. Please contact support."
-          );
-        }
-      }
+      const { data, error } = await supabase.auth.signInWithPassword({email,password});
+      if (error) {setError(error.message); return;}
+      if (data.session) router.push("/chat");
+      else setError("Sign-in did not return a session. Check your email confirmation.");
     } catch {
       setError("An unexpected error occurred. Please try again.");
     } finally {

@@ -290,10 +290,10 @@ export default function AnalysisBlock({ message, onFollowUpClick }: AnalysisBloc
   const hasFollowUps = meta.follow_ups && meta.follow_ups.length > 0;
   const hasResult    = meta.result !== null && meta.result !== undefined;
 
-  const plotBase64 = meta.plot_base64 ||
+  const plotBase64 = meta.plot_base64 || (
     isPlot && meta.result && typeof meta.result === "object"
       ? (meta.result as Record<string, unknown>).plot_base64 as string | undefined
-      : undefined;
+      : undefined);
 
   // ── Error block ─────────────────────────────────────────────────────────────
   if (isError) {
@@ -441,7 +441,7 @@ export default function AnalysisBlock({ message, onFollowUpClick }: AnalysisBloc
         )}
 
         {/* ── Primary result: plot ── */}
-        {isPlot && plotBase64 && (
+        {plotBase64 && (
           <div
             className="rounded-lg overflow-hidden"
             style={{ border: "1px solid var(--border)" }}
