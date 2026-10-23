@@ -211,6 +211,31 @@ export default function InvestigationWorkspace({
   const loadVersion = useRef(0);
   const request = useRef<{ fingerprint: string; id: string } | null>(null);
   const current = runs.find((r) => r.id === active);
+  const numericColumns =
+    profile?.columns.filter((column) => column.kind === "number") || [];
+  const starterMetric =
+    numericColumns.find((column) =>
+      /amount|revenue|sales/i.test(column.name),
+    )?.name ||
+    numericColumns.find((column) => !/(^id$|_id$)/i.test(column.name))?.name;
+  const starterCategory =
+    profile?.columns.find((column) => /city|region|category/i.test(column.name))
+      ?.name ||
+    profile?.columns.find((column) => column.kind === "category")?.name;
+  const starterDate = profile?.columns.find(
+    (column) => column.kind === "date",
+  )?.name;
+  const starters = [
+    "Summarize the main numeric metrics",
+    ...(starterMetric && starterCategory
+      ? [`Break down ${starterMetric} by ${starterCategory}`]
+      : []),
+    ...(starterMetric && starterDate
+      ? [`Compare ${starterMetric} across two periods using ${starterDate}`]
+      : starterMetric
+        ? [`What is the average ${starterMetric}?`]
+        : []),
+  ];
   const status = current?.state.status;
   const running = !!status && !done.has(status);
   const selectedEvidence = current?.state.evidence.find(
@@ -274,7 +299,9 @@ export default function InvestigationWorkspace({
   }, [chatId]);
   useEffect(() => {
     void load();
-    return () => { loadVersion.current += 1; };
+    return () => {
+      loadVersion.current += 1;
+    };
   }, [load]);
   useEffect(() => {
     if (!active || !running || !token) return;
@@ -629,11 +656,7 @@ export default function InvestigationWorkspace({
                   down by category.
                 </p>
                 <div className="starter-list">
-                  {[
-                    "Summarize the main numeric metrics",
-                    "Compare revenue between January and February 2026 by region",
-                    "Which categories contribute most to the total?",
-                  ].map((q) => (
+                  {starters.map((q) => (
                     <button key={q} onClick={() => setQuestion(q)}>
                       {q}
                       <ArrowUpRight size={16} />
@@ -670,6 +693,9 @@ export default function InvestigationWorkspace({
                         <li key={i}>
                           <strong>{step.operation.replaceAll("_", " ")}</strong>{" "}
                           {step.metric}
+                          {step.second_metric
+                            ? ` vs ${step.second_metric}`
+                            : ""}
                           {step.group_by ? ` by ${step.group_by}` : ""}
                           {step.periods?.length
                             ? ` · ${step.periods.map((p) => p.join(" to ")).join(" vs ")}`
@@ -699,7 +725,10 @@ export default function InvestigationWorkspace({
                     profile={profile}
                     busy={busy}
                     onSubmit={(plan) =>
-                      void investigate(current.state.question, plan)
+                      void investigate(
+                        `Run the revised calculation plan: ${plan.title}. ${plan.explanation}`,
+                        plan,
+                      )
                     }
                   />
                 )}
@@ -747,7 +776,12 @@ export default function InvestigationWorkspace({
                         . Availability will be checked again.
                       </p>
                     )}
-                    {current.state.error.resumable && (
+                    {(current.state.error.resumable ||
+                      (status === "interpretation_unavailable" &&
+                        current.state.http_attempts < 6 &&
+                        current.state.error.reasons?.some(
+                          (reason) => reason.reason === "invalid_output",
+                        ))) && (
                       <button
                         className="secondary-button"
                         disabled={busy}

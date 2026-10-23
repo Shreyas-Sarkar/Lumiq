@@ -2,11 +2,14 @@
 
 import asyncio
 import json
+import logging
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 import httpx
 from pydantic import ValidationError
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -24,10 +27,25 @@ class InferenceUnavailable(Exception):
         self.reasons = reasons
         self.retry_at = retry_at
         self.resumable = any(
-            x["reason"] in ("quota", "daily_quota", "outage", "timeout")
+            x["reason"] in ("quota", "daily_quota", "outage", "timeout", "invalid_output")
             for x in reasons
         )
-        super().__init__("; ".join(f"{x['provider']}: {x['reason']}" for x in reasons))
+        descriptions = {
+            "quota": "is temporarily at capacity",
+            "daily_quota": "has reached the configured daily allowance",
+            "outage": "could not be reached",
+            "timeout": "did not respond in time",
+            "invalid_output": "returned an answer that did not pass validation",
+            "authentication": "rejected its configured API key",
+            "unsupported_model": "does not offer the configured model",
+            "invalid_request": "rejected the request format",
+            "configuration": "has no configured model provider",
+            "attempt_budget_exhausted": "has used this run's model-attempt allowance",
+        }
+        super().__init__("; ".join(
+            f"{item['provider'].capitalize()} {descriptions.get(item['reason'], 'is unavailable')}"
+            for item in reasons
+        ) + ".")
 
 
 class ModelGateway:
@@ -202,8 +220,19 @@ class ModelGateway:
                 )
                 await checkpoint()
                 return result
-            except (ValidationError, ValueError, KeyError, IndexError, TypeError):
+            except (ValidationError, ValueError, KeyError, IndexError, TypeError) as error:
+                issue = type(error).__name__
+                if isinstance(error, ValidationError):
+                    issue = "; ".join(
+                        ".".join(map(str, item["loc"])) + ":" + item["type"]
+                        for item in error.errors(include_input=False)[:4]
+                    )
+                elif str(error) in {"unknown_evidence_reference", "numerical_claim"}:
+                    issue = str(error)
                 state["provider_calls"][-1]["outcome"] = "invalid_output"
+                state["provider_calls"][-1]["validation_issue"] = issue
+                logger.warning("Model output rejected: provider=%s stage=%s issue=%s",
+                               provider.name, stage, issue)
                 reasons.append({"provider": provider.name, "reason": "invalid_output"})
             except httpx.TimeoutException:
                 state["provider_calls"][-1]["outcome"] = "timeout"

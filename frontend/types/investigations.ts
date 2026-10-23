@@ -22,6 +22,7 @@ export interface AnalysisStep {
   aggregation?: string;
   group_by?: string | null;
   date_column?: string | null;
+  second_metric?: string | null;
   periods?: string[][];
   filters?: { column: string; operator: string; value: unknown }[];
   limit?: number;

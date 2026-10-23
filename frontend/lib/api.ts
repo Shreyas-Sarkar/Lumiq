@@ -161,6 +161,13 @@ export function apiError(error: unknown): string {
     if (typeof detail === "string") return detail;
     if (error.code === "ECONNABORTED")
       return "The backend is taking longer to respond. It may be waking up. Retry to reload saved progress.";
+    if (
+      !error.response &&
+      /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(?::\d+)?(?:\/|$)/i.test(
+        API_BASE,
+      )
+    )
+      return `The local API at ${API_BASE} is unreachable. Start the backend, then retry to reload saved progress.`;
   }
   return "Could not reach the backend. It may be waking up or offline. Retry to reload saved progress.";
 }

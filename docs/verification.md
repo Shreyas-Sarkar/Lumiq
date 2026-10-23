@@ -1,6 +1,6 @@
 # Verification record
 
-Backend/provider/SQL checks: 2026-10-02. Frontend and account checks: 2026-10-23.
+Offline backend/SQL checks: 2026-10-02. Live local-app verification: 2026-10-23.
 Local results, not a production-readiness certification.
 
 ## Verified
@@ -37,11 +37,50 @@ Local results, not a production-readiness certification.
   replacement before testing. This is access/schema validation, not a broad
   model-quality benchmark.
 - Personal Supabase CLI access confirmed on 2026-10-23: Lumiq project
-  `oanvayxyzjpwqsndctgg` reports ACTIVE_HEALTHY. A read-only SQL query confirmed
-  the new run table/private dataset bucket are still absent. The separate app
-  connector targets another organization; use the authenticated personal CLI.
+  `oanvayxyzjpwqsndctgg` reports ACTIVE_HEALTHY. After explicit owner approval,
+  the additive investigation migration was applied atomically; duplicate dataset
+  preflight was clear. Browser health reports database/workspace ready. The separate
+  app connector targets another organization; use the authenticated personal CLI.
 - Self-hosted Manrope font and license included; no browser request to a font CDN.
   Homepage sample uses local synthetic values and spends no provider quota.
+
+## Live browser verification — 2026-10-23
+
+Functional checks used the actual browser, hosted personal Supabase, real Gemini
+and Groq, and the owner-supplied EDA practice CSV. No mocked responses were used
+for this pass. The CSV and credentials are not committed.
+
+- Correct login succeeds; an incorrect password shows an explicit error. Sign-out
+  and a fresh login restore both workspaces, the dataset, and six completed runs.
+- Two uploads each report 110 rows, eight columns, and eight retained duplicates.
+  Missing values and date coverage are visible in the quality panel.
+- Purchase amount total is 215,000; city groups sum to that total. An edited mean
+  returns 2,529.412 across 85 usable amounts; a Mumbai filter returns 56,000.
+- Half-year comparison returns 104,000 then 82,000, a decrease of 22,000
+  (21.154%). Matching row counts increase from 43 to 52. Comparison statements
+  now derive their direction from these measurements, including historical runs.
+- Ambiguous periods trigger clarification. A real Groq planner fallback succeeded
+  after invalid Gemini output. Invalid analyst output preserves evidence and offers
+  bounded manual resume; the comparison completed within its six-attempt limit.
+- Correlation returns approximately -0.018 for Age/Salary (81 pairs). Editing the
+  second metric to Purchase_Amount returns approximately 0.193 (79 pairs), with
+  a truthful revised title and the original run retained.
+- A conceptual Pearson explanation completes without new calculations. Evidence
+  inspection, CSV browser download, saved-run navigation, and profile-derived
+  starter questions work. Narrow viewport inspection found no page overflow.
+- Stopping the API shows an explicit local-backend message while saved results
+  remain readable. Restart/retry restores access; repeated restarts recover data
+  from private storage and persisted run state.
+- Browser access to the unauthenticated chats endpoint is rejected. This pass did
+  not create a second account to re-test foreign ownership; that boundary retains
+  the earlier mocked API and SQL coverage.
+
+The supplied CSV validates these paths, not every possible analytical question.
+No intentional real quota exhaustion, new-account signup, deployed cold-start test,
+or production hosting rollout was performed. Model interpretation remains fallible.
+Supabase security advisors still report existing GraphQL schema visibility,
+public trigger-function reachability, and disabled leaked-password protection;
+this pass is not a clean security-audit claim.
 
 ## Local calculation benchmark
 
@@ -56,7 +95,8 @@ quality. No model calls were made. No unsupported-claim score is claimed.
 
 ## Remaining live gates
 
-Apply the reviewed additive migration, enable/configure the deployment, and run
-`docs/runbook.md`'s live checklist. Deployed signup, private storage across restart,
-worker recovery with real PostgREST, cold starts, and frontend/backend wiring
-remain distinct from the successful offline and direct-provider checks.
+The personal Supabase migration and local live flows are now verified. Configure
+and deploy Render/Vercel, then run the runbook's checklist against those deployed
+origins. New-account signup, cold starts, and deployed frontend/backend wiring
+remain unverified. Earlier automated browser journeys used mocked auth/API
+boundaries; their accessibility/performance results predate this live-fix pass.

@@ -40,7 +40,28 @@ export default function PlanEditor({
       className="plan-editor"
       onSubmit={(event) => {
         event.preventDefault();
-        onSubmit({ ...draft, clarification: null, concept_answer: null });
+        const title =
+          "Revised: " +
+          draft.steps
+            .map((step) =>
+              step.operation === "correlation"
+                ? `${step.metric} vs ${step.second_metric} correlation`
+                : step.operation === "compare_periods"
+                  ? `Compare ${step.metric} across selected periods`
+                  : `${step.aggregation || "sum"} ${step.metric}${step.group_by ? ` by ${step.group_by}` : ""}`,
+            )
+            .join("; ");
+        onSubmit({
+          ...draft,
+          title: title.slice(0, 160),
+          explanation:
+            "This revision uses the metrics, filters, and periods shown in the edited plan.",
+          assumptions: [
+            "Duplicate rows are retained. Missing metric values are excluded by the selected calculation; inspect evidence coverage for details.",
+          ],
+          clarification: null,
+          concept_answer: null,
+        });
       }}
     >
       <h2>Revise the calculation</h2>
@@ -64,20 +85,44 @@ export default function PlanEditor({
                 ))}
               </select>
             </label>
-            <label>
-              Calculation
-              <select
-                value={step.aggregation || "sum"}
-                onChange={(e) => change(index, { aggregation: e.target.value })}
-              >
-                {(step.operation === "compare_periods"
-                  ? ["sum", "count"]
-                  : ["sum", "mean", "count", "min", "max", "median"]
-                ).map((a) => (
-                  <option key={a}>{a}</option>
-                ))}
-              </select>
-            </label>
+            {step.operation === "correlation" ? (
+              <label>
+                Second metric
+                <select
+                  required
+                  value={step.second_metric || ""}
+                  onChange={(event) =>
+                    change(index, { second_metric: event.target.value })
+                  }
+                >
+                  <option value="">Choose a numeric column</option>
+                  {(
+                    profile?.columns
+                      .filter((column) => column.kind === "number")
+                      .map((column) => column.name) || columns
+                  ).map((column) => (
+                    <option key={column}>{column}</option>
+                  ))}
+                </select>
+              </label>
+            ) : (
+              <label>
+                Calculation
+                <select
+                  value={step.aggregation || "sum"}
+                  onChange={(e) =>
+                    change(index, { aggregation: e.target.value })
+                  }
+                >
+                  {(step.operation === "compare_periods"
+                    ? ["sum", "count"]
+                    : ["sum", "mean", "count", "min", "max", "median"]
+                  ).map((a) => (
+                    <option key={a}>{a}</option>
+                  ))}
+                </select>
+              </label>
+            )}
             {(step.operation === "group_by" ||
               step.operation === "compare_periods") && (
               <label>

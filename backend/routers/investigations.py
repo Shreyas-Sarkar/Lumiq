@@ -5,7 +5,7 @@ from fastapi.responses import Response
 from models.investigations import InvestigationRequest, ResumeRequest
 from routers.auth_middleware import get_current_user
 from routers.chat import validate_uuid
-from services.investigation import TERMINAL
+from services.investigation import TERMINAL, grounded_findings
 
 router = APIRouter()
 
@@ -29,11 +29,17 @@ def owned_chat(request, chat_id, user):
 
 
 def public(run):
-    return {
+    result = {
         k: v
         for k, v in run.items()
         if k not in ("lease_token", "lease_until", "user_id")
     }
+    if "state" in result:
+        state = result["state"]
+        result["state"] = {**state, "findings": grounded_findings(
+            state.get("evidence", []), state.get("findings", [])
+        )}
+    return result
 
 
 @router.get("/datasets/{chat_id}/profile")

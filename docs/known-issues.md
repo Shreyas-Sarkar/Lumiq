@@ -2,8 +2,8 @@
 
 Updated 2026-10-23. Check `verification.md` for measured evidence.
 
-- Deployed sign-in, durable upload, recovery, and cold-start flows must pass after
-  the migration and release. Mock API/browser tests do not prove production wiring.
+- The personal Supabase migration and local live upload/recovery flows passed.
+  Render/Vercel deployment, new-account signup, and cold starts remain release gates.
 - Stage checkpoints retain plans/evidence across restarts but do not promise
   exactly-once inference when a provider response is lost before persistence.
 - A request resumes work only while Render is awake. Long quota waits are saved

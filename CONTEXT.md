@@ -15,6 +15,8 @@ Backend verified against source on 2026-10-02; frontend updated on 2026-10-23.
    evidence. One plan repair is allowed; failed calculations produce no findings.
 6. The analyst receives evidence and must return valid evidence references without
    numerical claims. Numeric facts in the UI come from the stored calculations.
+   Period comparison direction and row-count statements are grounded deterministically
+   on creation and when reading historical runs.
 7. Gemini and Groq share a bounded attempt budget. Provider reservations, cooldowns,
    run state, and expiring leases persist in Postgres through owner-scoped RPCs.
 8. The browser polls stored status. Resume preserves completed evidence. Startup

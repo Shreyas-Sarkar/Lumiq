@@ -26,6 +26,18 @@ was pushed. The implementation specification reserves production release as an
 explicit owner action. The SQL has been verified locally; a production rollout
 must still check the actual target project's grants and storage behavior.
 
+## Activation record — 2026-10-23
+
+With explicit owner approval, the additive migration was applied in one transaction
+on personal project `oanvayxyzjpwqsndctgg`, after checking for duplicate datasets.
+The local backend enables investigations and disables legacy execution. Browser
+checks with real providers verified private uploads, persisted runs, and recovery;
+see `verification.md`. Render/Vercel have not been deployed by this work.
+
+Local development needs both servers: run `uvicorn main:app --reload` from
+`backend/` and `npm run dev` from `frontend/`. Starting the frontend alone does
+not start the API on port 8000.
+
 ## Backend configuration
 
 Render Root Directory: `backend`. Install `pip install -r requirements.txt`.
@@ -59,7 +71,8 @@ existing evidence; numerical facts come from evidence, not model prose.
   Daily local reservations reset on Pacific calendar boundaries.
 - Timeout/outage: tries the other configured provider within budget. If exhausted,
   saves an explicit reason. Completed evidence stays downloadable.
-- Invalid output: validates the same contract and tries the other provider.
+- Invalid output: validates the same contract and tries the other provider. If
+  both fail, manual resume is available within the existing six-attempt budget.
 - Authentication/model configuration: disables that provider in `provider_budget`.
   After fixing the key/model, explicitly clear its `disabled_reason` and expired
   `cooldown_until`. Never clear an active quota cooldown to bypass provider limits.

@@ -50,7 +50,7 @@ class AnalysisPlan(StrictModel):
 
 class Finding(StrictModel):
     evidence_id: str
-    observation: str = Field(max_length=600)
+    observation: str = Field(max_length=600, description="Qualitative observation with no numeric characters or spelled-out measurements. Exact numerical facts are rendered from the linked evidence.")
     hypothesis: str | None = Field(default=None, max_length=400)
 
 
