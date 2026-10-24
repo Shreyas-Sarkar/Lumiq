@@ -1,6 +1,6 @@
 # Remaining limitations
 
-Updated 2026-10-23. Check `verification.md` for measured evidence.
+Updated 2026-10-24. Check `verification.md` for measured evidence.
 
 - The personal Supabase migration and local live upload/recovery flows passed.
   Render/Vercel deployment, new-account signup, and cold starts remain release gates.
@@ -25,6 +25,10 @@ Updated 2026-10-23. Check `verification.md` for measured evidence.
 - Legacy generated-Python execution is disabled by default. Its in-process thread
   timeout/regex filtering is not a security sandbox. Old message sequencing may
   collide if that legacy execution path is explicitly re-enabled concurrently.
+- Completed historical results remain immutable and may predate calculation fixes.
+  Create a new revision to apply tool version 1.1; unfinished older evidence is
+  recomputed during recovery. Planner calls remain uncached; interpretation reuse
+  requires exact matching inputs and configured model versions.
 - Root legacy diagrams and `idea.md` are historical design material.
 
 Fixed in this branch: conceptual/comparison routing precedence; contextual cache
@@ -33,3 +37,10 @@ transport; negative evaluator acceptance; fake progress; stale session tokens;
 silent workspace errors; upload indexing claims; misleading health aggregation;
 vulnerable frontend dependency baseline. New investigations replace unrestricted
 execution and mandatory vector indexing with trusted analytical tools.
+
+Merge review fixes on 2026-10-24: unknown grouped measurements no longer become
+zero, resume/cancel retain freshly claimed checkpoints, changed clarifications
+invalidate stale evidence, and validated interpretation reuse is owner scoped.
+The earlier unconditional read-time comparison finding is limited to completed
+or existing findings, so provider failure retains evidence without a synthesized
+interpretation. See the regression coverage in `verification.md`.

@@ -110,6 +110,38 @@ A subsequently revoked Supabase session returned `session_not_found`. The explic
 sign-in recovery path restored both renamed workspaces and saved results. This is
 not evidence that every possible refresh/network interruption is resolved.
 
+## Merge-fix verification — 2026-10-24
+
+- The existing 21-test baseline exposed a read-time regression: provider failure
+  was given completed-looking comparison findings. The original regression now
+  passes, retaining evidence with an empty interpretation.
+- Thirty-one mocked backend/API/tool tests pass. New red-before-green API cases cover
+  all-missing grouped sums versus true zero, absent categories versus missing
+  period measurements (including missing category labels), worker completion
+  between read and lease claim for both cancel and resume, changed clarification
+  after partial evidence, recovery of obsolete tool-version evidence, and suppression
+  of model-generated rankings of groups whose measurements are unknown.
+- Exact interpretation reuse completes an explicit-plan repeat with zero model
+  calls. Changed question/context/model configuration misses the cache; malformed
+  cached evidence references are rejected and fresh interpretation is requested.
+  Private cache payload/key fields are excluded from public responses.
+- `bash scripts/check.sh` passes Python syntax and frontend types. The Next.js
+  production build passes. These static checks are separate from runtime coverage.
+- Both standards and spec re-reviews found no remaining concrete blocker in the
+  fix diff. Reviewers inspected source/tests; they did not independently rerun tests.
+- Live browser follow-up: a ten-row synthetic CSV with unknown values, real zeros,
+  absent categories, and missing category labels uploads and profiles successfully.
+  A completed group-by run displays `MissingBoth` as unknown and `Zero` as 0; the
+  unknown chart bar has zero width. A model-generated ranking of unknown results
+  was reproduced, then suppressed with a deterministic limitation statement and
+  its own red/green API regression. The same saved result replays correctly after
+  backend restart. This live run used two successful Gemini requests; replay made
+  no additional inference call. Interpretation cache hit/miss and completion-race
+  timing are verified through the mocked API tests, not claimed as live race tests.
+- No database migration or deployment setting is changed by these fixes. The cache
+  uses existing owner-scoped persisted run JSON. Render/Vercel production behavior
+  remains a separate release gate.
+
 ## Local calculation benchmark
 
 | Rows | Parsed data | Peak process RSS | Calculation time | Known answer |

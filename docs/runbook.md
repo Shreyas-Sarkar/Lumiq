@@ -84,12 +84,32 @@ in 120 seconds; a poll or startup recovery can claim unfinished work. A lost
 provider response consumes an attempt even if its result cannot be recovered.
 There is no guaranteed completion while free Render sleeps.
 
+## Merge and deployment preflight
+
+Before merging an auto-deploying main branch, verify the target hosting settings:
+Render root `backend`, workspace flag enabled, legacy execution disabled, current
+provider configuration, private dataset bucket, and exact allowed frontend origins.
+Vercel root must be `frontend`, with its public API URL pointing to the Render
+HTTPS origin. The root combined-service `vercel.json` is historical.
+
+The hosted Supabase migration was applied with approval on 2026-10-23. That does
+not establish Render/Vercel environment readiness. A green Vercel build does not
+prove upload, inference, persistence, or cold-start recovery against the deployed API.
+Keep a production deployment smoke pass distinct from code merge review.
+
 ## Storage and retention
 
 CSV paths are generated as `owner-id/dataset-id.csv`. The bucket is private and
 backend-only; the API checks ownership and validates the object path. Old local
 files are read only inside the authenticated owner's upload directory. Missing
 historical files require a new upload; metadata cannot recreate lost bytes.
+
+Tool version 1.1 preserves unknown grouped sums and contributions. New runs cannot
+reuse older calculation keys; unfinished older evidence is recomputed before the
+analyst. Completed historical runs stay unchanged; revise their plan for updated
+calculations. Exact validated interpretation results can be reused from completed
+owner/dataset-scoped state; different context or configured models require fresh
+interpretation. Reuse is disclosed in run history and consumes no inference attempt.
 
 Run status history is capped at thirty events; each state stores only its latest
 checkpoint. Evidence is bounded to four steps and fifty displayed rows per step.
