@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 import logging
 from models.schemas import (
     ChatCreateRequest,
+    ChatRenameRequest,
     ChatResponse,
     MessageResponse,
     QueryRequest,
@@ -37,6 +38,23 @@ async def create_chat(
         email=current_user["email"],
         title=body.title,
     )
+    return ChatResponse(**chat)
+
+
+@router.post("/chats/{chat_id}/rename", response_model=ChatResponse)
+async def rename_chat(
+    chat_id: str,
+    body: ChatRenameRequest,
+    request: Request,
+    current_user: dict = Depends(get_current_user),
+):
+    validate_uuid(chat_id, "chat_id")
+    try:
+        chat = request.app.state.chat_manager.rename_chat(
+            chat_id=chat_id, user_id=current_user["id"], title=body.title
+        )
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Workspace not found")
     return ChatResponse(**chat)
 
 
@@ -117,6 +135,8 @@ async def send_query(
 
     chat_manager = request.app.state.chat_manager
     orchestrator = request.app.state.orchestrator
+    if not orchestrator:
+        raise HTTPException(410, "Legacy code generation is retired. Use the investigation workspace; previous messages remain readable.")
 
     try:
         chat_manager.get_chat_by_id(

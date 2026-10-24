@@ -1,0 +1,6 @@
+date,region,revenue
+2026-01-01,North,0
+2026-01-01,North,0
+2026-02-01,South,50
+invalid-date,South,
+2026-02-02,,20

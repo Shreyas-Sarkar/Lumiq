@@ -1,5 +1,6 @@
 "use client";
 
+import BrandMark from "@/components/BrandMark";
 import { useState } from "react";
 import {
   ChevronDown,
@@ -290,10 +291,10 @@ export default function AnalysisBlock({ message, onFollowUpClick }: AnalysisBloc
   const hasFollowUps = meta.follow_ups && meta.follow_ups.length > 0;
   const hasResult    = meta.result !== null && meta.result !== undefined;
 
-  const plotBase64 =
+  const plotBase64 = meta.plot_base64 || (
     isPlot && meta.result && typeof meta.result === "object"
       ? (meta.result as Record<string, unknown>).plot_base64 as string | undefined
-      : undefined;
+      : undefined);
 
   // ── Error block ─────────────────────────────────────────────────────────────
   if (isError) {
@@ -390,16 +391,7 @@ export default function AnalysisBlock({ message, onFollowUpClick }: AnalysisBloc
         className="flex items-center gap-3 px-5 py-3 border-b"
         style={{ borderColor: "var(--border)", background: "var(--surface-2)" }}
       >
-        <div
-          className="w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold flex-shrink-0"
-          style={{
-            background: "var(--surface-3)",
-            border: "1px solid var(--border-strong)",
-            color: "var(--text)",
-          }}
-        >
-          L
-        </div>
+        <BrandMark size={22} />
         <span className="text-xs font-semibold" style={{ color: "var(--text)" }}>
           Analysis
         </span>
@@ -441,7 +433,7 @@ export default function AnalysisBlock({ message, onFollowUpClick }: AnalysisBloc
         )}
 
         {/* ── Primary result: plot ── */}
-        {isPlot && plotBase64 && (
+        {plotBase64 && (
           <div
             className="rounded-lg overflow-hidden"
             style={{ border: "1px solid var(--border)" }}

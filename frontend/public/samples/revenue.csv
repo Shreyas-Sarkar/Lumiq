@@ -1,0 +1,7 @@
+date,region,product,revenue,orders
+2026-01-05,North,Starter,100,10
+2026-01-15,South,Starter,80,8
+2026-01-31,North,Pro,120,6
+2026-02-05,North,Starter,130,13
+2026-02-15,South,Starter,60,6
+2026-02-28,North,Pro,150,8

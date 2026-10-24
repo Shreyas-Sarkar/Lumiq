@@ -1,3 +1,4 @@
+import asyncio
 from fastapi import HTTPException, Security
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from db.supabase_client import supabase
@@ -12,7 +13,7 @@ async def get_current_user(
     try:
         if supabase is None:
             raise HTTPException(status_code=503, detail="Database not configured")
-        response = supabase.auth.get_user(token)
+        response = await asyncio.to_thread(supabase.auth.get_user,token)
         if not response.user:
             raise HTTPException(status_code=401, detail="Invalid or expired token")
         return {"id": response.user.id, "email": response.user.email}

@@ -54,9 +54,9 @@ COMMON_ALIASES = {
 # ---------------------------------------------------------------------------
 
 def matches_column(query_clean: str, normalized_columns: list[str]) -> bool:
-    """Return True if any normalized column name appears as a substring in the query."""
+    """Return True if any normalized column name appears as a whole word in the query."""
     for col in normalized_columns:
-        if col and col in query_clean:
+        if col and re.search(r"(?<!\w)" + re.escape(col) + r"(?!\w)", query_clean):
             return True
     return False
 
@@ -74,27 +74,10 @@ def matches_alias(query_clean: str) -> bool:
 # ---------------------------------------------------------------------------
 
 class ModeClassifier:
-    """
-    Deterministic 4-mode query classifier.
+    """Route explicit definitions and off-topic requests before computations.
 
-    Output modes:
-        executor   — directly computable query; code is generated and executed
-        hybrid     — relationship/comparative query; MUST compute metrics
-        concept    — definitional query; NO code generated or executed
-        irrelevant — off-topic; rejected immediately
-
-    Decision order (strict, top-to-bottom):
-        1. Schema-aware column/alias match          → executor
-        2. EXECUTOR_PATTERNS keyword match          → executor
-        3. HYBRID_PATTERNS keyword match            → hybrid
-        4. CONCEPT_PATTERNS keyword match           → concept
-        5. IRRELEVANT_PATTERNS keyword match        → irrelevant
-        6. Smart default fallback                   → concept | executor
-
-    Architectural invariant:
-        concept  → NEVER triggers execution
-        hybrid   → ALWAYS triggers execution
-        executor → ALWAYS triggers execution
+    Dataset-aware comparisons require computation. Explicit general definitions
+    do not consume execution quota. Whole-word column matches avoid alias collisions.
     """
 
     def classify(self, query: str, df=None) -> str:
@@ -109,70 +92,16 @@ class ModeClassifier:
             Loaded dataset. When provided, column-name matching is applied.
             When None, falls back to keyword-only matching — no crash.
         """
-        query_clean = query.lower().strip()
-
-        # ------------------------------------------------------------------
-        # 1. Schema-aware matching (only when df is available)
-        # ------------------------------------------------------------------
-        if df is not None:
-            try:
-                normalized_columns = [
-                    col.lower().replace("_", " ") for col in df.columns.tolist()
-                ]
-                if matches_column(query_clean, normalized_columns):
-                    return "executor"
-                if matches_alias(query_clean):
-                    return "executor"
-            except Exception:
-                # Defensive: never let schema matching crash the classifier
-                pass
-
-        # ------------------------------------------------------------------
-        # 2. Executor keyword patterns
-        # ------------------------------------------------------------------
-        executor_score = sum(
-            bool(re.search(p, query_clean)) for p in EXECUTOR_PATTERNS
-        )
-        if executor_score > 0:
-            return "executor"
-
-        # ------------------------------------------------------------------
-        # 3. Hybrid patterns (relationship / comparison) — check BEFORE concept
-        #    so "explain correlation between X and Y" → hybrid, not concept
-        # ------------------------------------------------------------------
-        hybrid_score = sum(
-            bool(re.search(p, query_clean)) for p in HYBRID_PATTERNS
-        )
-        if hybrid_score > 0:
-            return "hybrid"
-
-        # ------------------------------------------------------------------
-        # 4. Concept patterns (definitional)
-        # ------------------------------------------------------------------
-        concept_score = sum(
-            bool(re.search(p, query_clean)) for p in CONCEPT_PATTERNS
-        )
-        if concept_score > 0:
+        query_clean = query.lower().strip().replace("_", " ")
+        columns = [str(c).lower().replace("_", " ") for c in df.columns] if df is not None else []
+        dataset_signal = matches_column(query_clean, columns)
+        concept = any(re.search(p, query_clean) for p in CONCEPT_PATTERNS)
+        if "in general" in query_clean or (concept and not dataset_signal):
             return "concept"
-
-        # ------------------------------------------------------------------
-        # 5. Irrelevant patterns
-        # ------------------------------------------------------------------
-        irrelevant_score = sum(
-            bool(re.search(p, query_clean)) for p in IRRELEVANT_PATTERNS
-        )
-        if irrelevant_score > 0:
+        if any(re.search(p, query_clean) for p in IRRELEVANT_PATTERNS) and not dataset_signal:
             return "irrelevant"
-
-        # ------------------------------------------------------------------
-        # 6. Smart default fallback
-        #    If the query reads like a question without data signals → concept
-        #    Otherwise default to executor (executor-first architecture)
-        # ------------------------------------------------------------------
-        definitional_signals = re.search(
-            r"\b(what is|what are|define|explain|how does|meaning)\b", query_clean
-        )
-        if definitional_signals:
-            return "concept"
-
-        return "executor"
+        if any(re.search(p, query_clean) for p in HYBRID_PATTERNS):
+            return "hybrid"
+        if dataset_signal or any(re.search(p, query_clean) for p in EXECUTOR_PATTERNS):
+            return "executor"
+        return "concept" if concept else "executor"

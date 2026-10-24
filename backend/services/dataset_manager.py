@@ -2,6 +2,8 @@ import pandas as pd
 import numpy as np
 import uuid
 import os
+import io
+import hashlib
 from typing import Any
 
 
@@ -120,8 +122,11 @@ class DatasetManager:
         chroma_collection_id: str,
         row_count: int,
         column_count: int,
+        dataset_id: str | None = None,
+        content_hash: str | None = None,
+        profile: dict | None = None,
     ) -> dict:
-        dataset_id = str(uuid.uuid4())
+        dataset_id = dataset_id or str(uuid.uuid4())
         data = {
             "id": dataset_id,
             "chat_id": chat_id,
@@ -135,6 +140,8 @@ class DatasetManager:
             "row_count": row_count,
             "column_count": column_count,
         }
+        if profile is not None:
+            data.update(profile=profile, content_hash=content_hash)
         result = self.supabase.table("dataset").insert(data).execute()
         return result.data[0]
 
@@ -147,9 +154,41 @@ class DatasetManager:
             raise ValueError(f"No dataset found for chat {chat_id}")
         return result.data[0]
 
-    def load_dataframe_from_storage(self, storage_path: str) -> pd.DataFrame:
+    def store_csv(
+        self, content: bytes, user_id: str, dataset_id: str, bucket: str
+    ) -> str:
+        bucket_info = self.supabase.storage.get_bucket(bucket)
+        if bucket_info.public:
+            raise ValueError("Dataset bucket must be private")
+        path = f"{user_id}/{dataset_id}.csv"
+        self.supabase.storage.from_(bucket).upload(
+            path=path,
+            file=content,
+            file_options={"content-type": "text/csv", "upsert": "false"},
+        )
+        return f"supabase://{bucket}/{path}"
+
+    def remove_csv(self, storage_path: str):
+        if storage_path.startswith("supabase://"):
+            bucket, path = storage_path.removeprefix("supabase://").split("/", 1)
+            self.supabase.storage.from_(bucket).remove([path])
+        elif os.path.exists(storage_path):
+            os.remove(storage_path)
+
+    def load_dataframe_from_storage(
+        self, storage_path: str, owner: str | None = None
+    ) -> pd.DataFrame:
+        if storage_path.startswith("supabase://"):
+            bucket, path = storage_path.removeprefix("supabase://").split("/", 1)
+            if owner and path.split("/")[0] != owner:
+                raise ValueError("Dataset storage ownership mismatch")
+            content = self.supabase.storage.from_(bucket).download(path)
+            return pd.read_csv(io.BytesIO(content))
+        if owner:
+            expected = os.path.realpath(os.path.join(self.upload_dir, owner))
+            actual = os.path.realpath(storage_path)
+            if os.path.commonpath([expected, actual]) != expected:
+                raise ValueError("Dataset storage ownership mismatch")
         if not os.path.exists(storage_path):
-            raise FileNotFoundError(
-                f"Dataset file not found: {storage_path}"
-            )
+            raise FileNotFoundError(f"Dataset file not found: {storage_path}")
         return pd.read_csv(storage_path)

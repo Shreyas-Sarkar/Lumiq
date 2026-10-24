@@ -19,6 +19,10 @@ class Evaluator:
                 suggested_fix=result.error,
             )
 
+        if result.plot_base64 and result.output is None:
+            return EvaluationResult(is_valid=True, is_relevant=True, confidence=0.7,
+                                    reason="Chart produced; semantic relevance not checked", should_retry=False)
+
         if result.output is None:
             return EvaluationResult(
                 is_valid=False,
@@ -44,7 +48,7 @@ class Evaluator:
                 query, result.serialized_output[:300]
             )
         except Exception:
-            llm_check = True
+            llm_check = False
 
         return EvaluationResult(
             is_valid=True,
@@ -73,7 +77,7 @@ class Evaluator:
             )
             return "yes" in response.lower()
         except Exception:
-            return True
+            return False
 
     def should_retry(
         self, eval_result: EvaluationResult, attempt: int

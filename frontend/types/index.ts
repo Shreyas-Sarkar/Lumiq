@@ -27,6 +27,7 @@ export interface AssistantMetadata {
   confidence: "high" | "medium" | "low";
   code: string;
   result: unknown;
+  plot_base64?: string | null;
   result_type: "dataframe" | "scalar" | "list" | "plot" | "error" | "rejection" | "analyst";
   mode: "executor" | "analyst";
   rag_context_used: string[];

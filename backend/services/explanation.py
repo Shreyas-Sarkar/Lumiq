@@ -61,6 +61,7 @@ class ExplanationService:
             "confidence": cognitive_output.get("confidence", "medium"),
             "code": code,
             "result": result_data,
+            "plot_base64": exec_result.plot_base64 if exec_result is not None else None,
             "result_type": result_type,
             "mode": mode,
             "rag_context_used": rag_context,

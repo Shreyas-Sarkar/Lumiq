@@ -1,5 +1,6 @@
 "use client";
 
+import BrandMark from "@/components/BrandMark";
 import { ProcessingPhase, PHASE_LABELS } from "@/types";
 
 interface ProcessingPhasesProps {
@@ -22,8 +23,8 @@ export default function ProcessingPhases({
 
   return (
     <div className="flex items-start gap-3 max-w-[85%]">
-      <div className="w-7 h-7 rounded-full bg-gradient-to-br from-purple-600 to-indigo-600 flex items-center justify-center flex-shrink-0 text-xs font-bold mt-0.5 shadow-md">
-        L
+      <div className="w-7 h-7 flex items-center justify-center flex-shrink-0 mt-0.5">
+        <BrandMark size={24} />
       </div>
       <div className="bg-gray-800/80 backdrop-blur border border-gray-700/50 shadow-lg text-gray-100 rounded-2xl rounded-tl-sm px-4 py-4">
         <div className="space-y-2">

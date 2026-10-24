@@ -52,6 +52,18 @@ class ChatManager:
             raise ValueError(f"Chat {chat_id} not found")
         return result.data[0]
 
+    def rename_chat(self, chat_id: str, user_id: str, title: str) -> dict:
+        result = (
+            self.supabase.table("chat")
+            .update({"title": title, "updated_at": datetime.now(timezone.utc).isoformat()})
+            .eq("id", chat_id)
+            .eq("user_id", user_id)
+            .execute()
+        )
+        if not result.data:
+            raise ValueError("Workspace not found")
+        return result.data[0]
+
     def add_message(
         self,
         chat_id: str,
