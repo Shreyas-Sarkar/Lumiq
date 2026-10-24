@@ -7,7 +7,7 @@ import pandas as pd
 import numpy as np
 from models.investigations import AnalysisPlan
 
-TOOL_VERSION = "1.0"
+TOOL_VERSION = "1.1"
 MAX_ROWS = 100_000
 MAX_MEMORY = 100 * 1024 * 1024
 
@@ -92,6 +92,15 @@ def _aggregate(s, operation):
     return None if pd.isna(v) or not np.isfinite(v) else float(v)
 
 
+def _grouped_aggregate(data, step):
+    groups = data.groupby(step.group_by, dropna=False)[step.metric]
+    return (
+        groups.sum(min_count=1)
+        if step.aggregation == "sum"
+        else groups.agg(step.aggregation)
+    )
+
+
 def execute_plan(df, plan: AnalysisPlan):
     profile = profile_dataset(df)
     evidence = []
@@ -132,11 +141,7 @@ def execute_plan(df, plan: AnalysisPlan):
             _column(data, step.group_by)
             if data[step.group_by].nunique(dropna=False) > 500:
                 raise ValueError("Too many groups (max 500); narrow the filters")
-            groups = (
-                data.groupby(step.group_by, dropna=False)[step.metric]
-                .agg(step.aggregation)
-                .reset_index()
-            )
+            groups = _grouped_aggregate(data, step).reset_index()
             groups = groups.sort_values(step.metric, ascending=not step.sort_descending)
             rows = json.loads(groups.head(step.limit).to_json(orient="records"))
             if len(groups) > step.limit:
@@ -182,9 +187,11 @@ def execute_plan(df, plan: AnalysisPlan):
                 "previous": totals[0],
                 "current": totals[1],
                 "change": delta,
-                "percent_change": 100 * delta / totals[0]
-                if delta is not None and totals[0] != 0
-                else None,
+                "percent_change": (
+                    100 * delta / totals[0]
+                    if delta is not None and totals[0] != 0
+                    else None
+                ),
                 "previous_rows": len(subsets[0]),
                 "current_rows": len(subsets[1]),
             }
@@ -200,12 +207,17 @@ def execute_plan(df, plan: AnalysisPlan):
                 if data[step.group_by].nunique(dropna=False) > 500:
                     raise ValueError("Too many groups (max 500)")
                 parts = [
-                    p.groupby(step.group_by, dropna=False)[step.metric]
-                    .agg(step.aggregation)
-                    .rename(name)
+                    _grouped_aggregate(p, step).rename(name)
                     for p, name in zip(subsets, ["previous", "current"])
                 ]
-                grouped = pd.concat(parts, axis=1).fillna(0).reset_index()
+                categories = parts[0].index.union(parts[1].index, sort=False)
+                grouped = pd.concat(
+                    [part.reindex(categories, fill_value=0) for part in parts], axis=1
+                ).reset_index()
+                limitations.append(
+                    "Categories without rows in a period contribute zero; present categories "
+                    "without usable metric values remain unknown."
+                )
                 grouped["change"] = grouped["current"] - grouped["previous"]
                 grouped = grouped.sort_values("change", key=abs, ascending=False)
                 rows = json.loads(grouped.head(step.limit).to_json(orient="records"))

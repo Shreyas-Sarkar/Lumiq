@@ -7,14 +7,24 @@ from datetime import datetime, timezone
 from typing import TypedDict
 from langgraph.graph import StateGraph, START, END
 from models.investigations import AnalysisPlan, Findings
+from pydantic import ValidationError
 from services.analysis_tools import execute_plan, profile_dataset, TOOL_VERSION
 from services.model_gateway import InferenceUnavailable
 
 
 def grounded_findings(evidence, findings):
-    """Render comparison directions from measured values, including historical runs."""
+    """Ground comparison directions and unknown-measurement limits from evidence."""
     statements = {}
     for item in evidence:
+        if item.get("operation") == "group_by" and any(
+            row.get(item["metric"]) is None for row in item.get("rows", [])
+        ):
+            statements[item["id"]] = (
+                "Groups without usable metric values have unknown results. "
+                "They cannot be ranked against measured groups or treated as zero. "
+                "Inspect the evidence table for the measured values."
+            )
+            continue
         if item.get("operation") != "compare_periods":
             continue
         summary = item.get("summary", {})
@@ -22,23 +32,46 @@ def grounded_findings(evidence, findings):
         if previous is None or current is None:
             text = "A selected period has no usable metric values, so its change cannot be determined."
         else:
-            direction = "higher" if current > previous else "lower" if current < previous else "unchanged"
+            direction = (
+                "higher"
+                if current > previous
+                else "lower" if current < previous else "unchanged"
+            )
             text = f"The recorded {item.get('aggregation', 'sum')} of {item.get('metric', 'the metric')} is {direction} in the second selected period compared with the first."
-        first_rows, second_rows = summary.get("previous_rows"), summary.get("current_rows")
+        first_rows, second_rows = summary.get("previous_rows"), summary.get(
+            "current_rows"
+        )
         if first_rows is not None and second_rows is not None:
-            direction = "more" if second_rows > first_rows else "fewer" if second_rows < first_rows else "the same number of"
+            direction = (
+                "more"
+                if second_rows > first_rows
+                else "fewer" if second_rows < first_rows else "the same number of"
+            )
             text += f" The second period contains {direction} matching rows."
         text += " This comparison does not establish a business cause."
         statements[item["id"]] = text
     result = [
-        {**finding, "observation": statements[finding["evidence_id"]], "hypothesis": None}
-        if finding.get("evidence_id") in statements else dict(finding)
+        (
+            {
+                **finding,
+                "observation": statements[finding["evidence_id"]],
+                "hypothesis": None,
+            }
+            if finding.get("evidence_id") in statements
+            else dict(finding)
+        )
         for finding in findings
     ]
     covered = {finding["evidence_id"] for finding in result}
-    result.extend({"evidence_id": key, "observation": text, "hypothesis": None}
-                  for key, text in statements.items() if key not in covered)
+    result.extend(
+        {"evidence_id": key, "observation": text, "hypothesis": None}
+        for key, text in statements.items()
+        if key not in covered
+    )
     return result
+
+
+ANALYST_PROMPT_VERSION = "2"
 
 
 class GraphState(TypedDict):
@@ -199,7 +232,10 @@ class InvestigationService:
                         state["concept_answer"] = plan.concept_answer
                         await save("complete")
                         return {"run_id": run_id}
-                    if state.get("evidence"):
+                    if state.get("evidence") and all(
+                        item.get("tool_version") == TOOL_VERSION
+                        for item in state["evidence"]
+                    ):
                         return {"run_id": run_id}
                     key = hashlib.sha256(
                         json.dumps(
@@ -290,11 +326,13 @@ class InvestigationService:
                         "Do not invent measurements or causal claims. "
                         "Numerical values are displayed separately from stored evidence. Hypotheses must be explicitly uncertain and require additional data; preferably leave null. "
                         "Respect missing values, truncation, incomplete coverage and correlation limits. "
+                        "Use exact category labels; never invent a business meaning for them or rank unknown measurements against measured values. "
                         "Follow-up questions must use only the supplied columns and supported aggregate, group_by, compare_periods, or correlation operations. "
                         "Do not propose unsupported scatter plots, forecasting, causal inference, or joins. "
                         + json.dumps(
                             {
                                 "question": state["question"],
+                                "context": state.get("context", {}),
                                 "plan": state["plan"],
                                 "evidence": state["evidence"],
                             }
@@ -310,15 +348,48 @@ class InvestigationService:
                             if re.search(r"\d", finding.observation):
                                 raise ValueError("numerical_claim")
 
-                    findings = await self.gateway.complete(
-                        "analyst",
-                        prompt,
-                        Findings,
-                        state,
-                        save,
-                        validate=validate_findings,
+                    key = hashlib.sha256(
+                        json.dumps(
+                            {
+                                "owner": owner,
+                                "dataset_version": state["dataset_version"],
+                                "evidence_key": state.get("evidence_key"),
+                                "prompt_version": ANALYST_PROMPT_VERSION,
+                                "prompt": prompt,
+                                "schema": Findings.model_json_schema(),
+                                "models": [
+                                    (provider.name, provider.model)
+                                    for provider in self.gateway.providers
+                                ],
+                            },
+                            sort_keys=True,
+                        ).encode()
+                    ).hexdigest()
+                    cached = await asyncio.to_thread(
+                        self.store.cached_interpretation, owner, run["dataset_id"], key
                     )
-                    state["findings"] = grounded_findings(state["evidence"], [f.model_dump() for f in findings.findings])
+                    findings = None
+                    if cached is not None:
+                        try:
+                            findings = Findings.model_validate(cached)
+                            validate_findings(findings)
+                        except (ValidationError, ValueError):
+                            findings = None
+                    state["interpretation_reused"] = findings is not None
+                    if findings is None:
+                        findings = await self.gateway.complete(
+                            "analyst",
+                            prompt,
+                            Findings,
+                            state,
+                            save,
+                            validate=validate_findings,
+                        )
+                    state["interpretation_key"] = key
+                    state["interpretation_payload"] = findings.model_dump()
+                    state["findings"] = grounded_findings(
+                        state["evidence"], [f.model_dump() for f in findings.findings]
+                    )
                     state["follow_ups"] = findings.follow_ups
                     await save("complete")
                     return {"run_id": run_id}
@@ -343,9 +414,7 @@ class InvestigationService:
                 await save(
                     "interpretation_unavailable"
                     if state.get("evidence")
-                    else "waiting_for_quota"
-                    if error.resumable
-                    else "failed"
+                    else "waiting_for_quota" if error.resumable else "failed"
                 )
             except FileNotFoundError:
                 state["error"] = {
@@ -384,38 +453,51 @@ class InvestigationService:
             self.scheduled.discard(run_id)
 
     def resume(self, run_id, owner, body):
-        run = self.store.get(run_id, owner)
-        if not run:
-            raise ValueError("Investigation not found")
-        state = run["state"]
-        if state["status"] == "complete" or state["status"] == "cancelled":
-            raise ValueError("Finished runs are immutable. Create a new revision.")
-        if state.get("http_attempts", 0) >= 6:
-            raise ValueError(
-                "This run used its inference budget. Start a new revision with the saved plan."
-            )
-        if state["status"] == "needs_clarification" and not (
-            body.clarification or body.plan
-        ):
-            raise ValueError("Answer the clarification or provide an edited plan")
-        retry_at = state.get("error", {}).get("retry_at")
-        if retry_at and datetime.fromisoformat(retry_at) > datetime.now(timezone.utc):
-            raise ValueError(
-                "The provider cooldown is still active. Resume after the displayed time."
-            )
         claimed = self.store.claim(run_id, owner)
         if not claimed:
             raise ValueError(
                 "Work is already running; wait for the current calculation"
             )
+        state = claimed["state"]
+        try:
+            if state["status"] in ("complete", "cancelled"):
+                raise ValueError("Finished runs are immutable. Create a new revision.")
+            if state.get("http_attempts", 0) >= 6:
+                raise ValueError(
+                    "This run used its inference budget. Start a new revision with the saved plan."
+                )
+            if state["status"] == "needs_clarification" and not (
+                body.clarification or body.plan
+            ):
+                raise ValueError("Answer the clarification or provide an edited plan")
+            retry_at = state.get("error", {}).get("retry_at")
+            if retry_at and datetime.fromisoformat(retry_at) > datetime.now(
+                timezone.utc
+            ):
+                raise ValueError(
+                    "The provider cooldown is still active. Resume after the displayed time."
+                )
+        except ValueError:
+            # Release the lease without replacing any newer evidence or attempt counts.
+            self.store.checkpoint(claimed, state, True)
+            raise
         if body.plan:
             state["plan"] = body.plan.model_dump()
-            state["evidence"] = []
-            state["findings"] = []
-            state.pop("follow_ups", None)
         elif body.clarification:
             state["question"] += "\nClarification: " + body.clarification.strip()
             state.pop("plan", None)
+        if body.plan or body.clarification:
+            state["evidence"] = []
+            state["findings"] = []
+            for key in (
+                "evidence_key",
+                "computation_reused",
+                "follow_ups",
+                "interpretation_key",
+                "interpretation_payload",
+                "interpretation_reused",
+            ):
+                state.pop(key, None)
         state.pop("error", None)
         state["status"] = "queued"
         return self.store.checkpoint(claimed, state, True)

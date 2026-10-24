@@ -233,3 +233,234 @@ class InvestigationAPITests(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 400)
         self.assertEqual(len(self.calls), 2)
+
+    def test_missing_group_totals_are_unknown_not_zero(self):
+        self.datasets.df = pd.DataFrame(
+            {
+                "region": ["Missing", "Zero", "Measured"],
+                "revenue": [None, 0.0, 7.0],
+            }
+        )
+        self.responses = [
+            {
+                "steps": [
+                    {"operation": "group_by", "metric": "revenue", "group_by": "region"}
+                ]
+            },
+            {"findings": []},
+        ]
+        run = self.submit()
+        self.assertEqual(run["state"]["status"], "complete")
+        rows = {
+            row["region"]: row["revenue"] for row in run["state"]["evidence"][0]["rows"]
+        }
+        self.assertIsNone(rows["Missing"])
+        self.assertEqual(rows["Zero"], 0)
+        self.assertEqual(rows["Measured"], 7)
+
+    def test_period_contributions_distinguish_absent_and_missing_measurements(self):
+        self.datasets.df = pd.DataFrame(
+            {
+                "date": [
+                    "2026-01-05",
+                    "2026-02-05",
+                    "2026-01-05",
+                    "2026-02-05",
+                    "2026-02-05",
+                    "2026-01-05",
+                    "2026-01-05",
+                    "2026-02-05",
+                    "2026-01-05",
+                    "2026-02-05",
+                ],
+                "region": [
+                    "Unknown",
+                    "Unknown",
+                    "Zero",
+                    "Zero",
+                    "New",
+                    "Gone",
+                    "MissingBoth",
+                    "MissingBoth",
+                    None,
+                    None,
+                ],
+                "revenue": [None, 30.0, 0.0, 0.0, 5.0, 7.0, None, None, 3.0, 8.0],
+            }
+        )
+        self.responses = [PLAN, {"findings": []}]
+        run = self.submit()
+        self.assertEqual(run["state"]["status"], "complete")
+        evidence = run["state"]["evidence"][0]
+        rows = {row["region"]: row for row in evidence["rows"]}
+        self.assertIsNone(rows["Unknown"]["previous"])
+        self.assertIsNone(rows["Unknown"]["change"])
+        self.assertIsNone(rows["MissingBoth"]["change"])
+        self.assertEqual(rows["Zero"]["change"], 0)
+        self.assertEqual(rows["New"]["previous"], 0)
+        self.assertEqual(rows["New"]["change"], 5)
+        self.assertEqual(rows["Gone"]["current"], 0)
+        self.assertEqual(rows["Gone"]["change"], -7)
+        self.assertEqual(rows[None]["change"], 5)
+        self.assertEqual(evidence["summary"]["change"], 33)
+
+    def test_cancel_cannot_overwrite_a_run_completed_before_claim(self):
+        run = self.submit()
+        completed = copy.deepcopy(self.store.rows[run["id"]]["state"])
+        self.store.rows[run["id"]]["state"]["status"] = "interrupted"
+        claim = self.store.claim
+
+        def finish_then_claim(rid, owner):
+            self.store.rows[rid]["state"] = copy.deepcopy(completed)
+            self.store.claim = claim
+            return claim(rid, owner)
+
+        self.store.claim = finish_then_claim
+        response = self.client.post(f"/api/investigations/{run['id']}/cancel")
+        self.assertEqual(response.status_code, 409, response.text)
+        saved = self.client.get(f"/api/investigations/{run['id']}").json()
+        expected = copy.deepcopy(run["state"])
+        expected["http_attempts"] = completed["http_attempts"]
+        self.assertEqual(saved["state"], expected)
+        self.assertIsNone(self.store.rows[run["id"]].get("lease_token"))
+
+    def test_resume_cannot_overwrite_a_run_completed_before_claim(self):
+        run = self.submit()
+        completed = copy.deepcopy(self.store.rows[run["id"]]["state"])
+        completed["http_attempts"] = 6
+        self.store.rows[run["id"]]["state"]["status"] = "interrupted"
+        claim = self.store.claim
+
+        def finish_then_claim(rid, owner):
+            self.store.rows[rid]["state"] = copy.deepcopy(completed)
+            self.store.claim = claim
+            return claim(rid, owner)
+
+        self.store.claim = finish_then_claim
+        response = self.client.post(f"/api/investigations/{run['id']}/resume", json={})
+        self.assertEqual(response.status_code, 409, response.text)
+        saved = self.client.get(f"/api/investigations/{run['id']}").json()
+        expected = copy.deepcopy(run["state"])
+        expected["http_attempts"] = completed["http_attempts"]
+        self.assertEqual(saved["state"], expected)
+        self.assertIsNone(self.store.rows[run["id"]].get("lease_token"))
+
+    def test_identical_explicit_plan_reuses_validated_interpretation_without_model_calls(
+        self,
+    ):
+        first = self.submit()
+        self.responses = []
+        second = self.submit(plan=PLAN)
+        self.assertEqual(second["state"]["status"], "complete")
+        self.assertTrue(second["state"]["interpretation_reused"])
+        self.assertEqual(second["state"]["http_attempts"], 0)
+        self.assertEqual(len(self.calls), 2)
+        self.assertEqual(second["state"]["findings"], first["state"]["findings"])
+
+    def test_interpretation_cache_does_not_cross_changed_questions_or_models(self):
+        first = self.submit()
+        self.responses = [{"findings": []}]
+        changed = self.submit(
+            plan=PLAN, question="Explain only the coverage limitations"
+        )
+        self.assertFalse(changed["state"]["interpretation_reused"])
+        self.assertEqual(changed["state"]["http_attempts"], 1)
+        self.gateway.providers[0].model = "different-test-model"
+        self.responses = [{"findings": []}]
+        model_changed = self.submit(plan=PLAN)
+        self.assertFalse(model_changed["state"]["interpretation_reused"])
+        self.assertEqual(len(self.calls), 4)
+        self.assertNotIn("interpretation_payload", first["state"])
+        self.assertNotIn("interpretation_key", first["state"])
+
+    def test_cached_interpretation_is_validated_again_before_reuse(self):
+        first = self.submit()
+        self.store.rows[first["id"]]["state"]["interpretation_payload"] = {
+            "findings": [{"evidence_id": "unknown", "observation": "Unsupported."}]
+        }
+        self.responses = [{"findings": []}]
+        second = self.submit(plan=PLAN)
+        self.assertFalse(second["state"]["interpretation_reused"])
+        self.assertEqual(second["state"]["http_attempts"], 1)
+        self.assertNotIn("unknown", json.dumps(second["state"]["findings"]))
+
+    def test_clarification_after_partial_evidence_recomputes_the_changed_plan(self):
+        invalid = {
+            "findings": [{"evidence_id": "unknown", "observation": "Unsupported."}]
+        }
+        self.responses = [PLAN, invalid, invalid]
+        run = self.submit()
+        self.assertEqual(run["state"]["status"], "interpretation_unavailable")
+        self.responses = [
+            {
+                "steps": [
+                    {
+                        "operation": "aggregate",
+                        "metric": "revenue",
+                        "aggregation": "count",
+                    }
+                ]
+            },
+            {"findings": []},
+        ]
+        response = self.client.post(
+            f"/api/investigations/{run['id']}/resume",
+            json={"clarification": "Count the usable revenue observations instead."},
+        )
+        self.assertEqual(response.status_code, 202, response.text)
+        final = self.client.get(f"/api/investigations/{run['id']}").json()
+        self.assertEqual(final["state"]["status"], "complete")
+        self.assertEqual(final["state"]["evidence"][0]["summary"], {"value": 6})
+
+    def test_resume_recomputes_evidence_from_an_older_calculation_version(self):
+        self.datasets.df = pd.DataFrame(
+            {"region": ["Missing", "Measured"], "revenue": [None, 7.0]}
+        )
+        plan = {
+            "steps": [
+                {"operation": "group_by", "metric": "revenue", "group_by": "region"}
+            ]
+        }
+        self.responses = [plan, {"findings": []}]
+        run = self.submit()
+        stored = self.store.rows[run["id"]]["state"]
+        stored["status"] = "interrupted"
+        stored["evidence_key"] = "old-calculation-key"
+        stored["evidence"][0]["tool_version"] = "1.0"
+        for row in stored["evidence"][0]["rows"]:
+            if row["region"] == "Missing":
+                row["revenue"] = 0
+        self.responses = [{"findings": []}]
+        response = self.client.post(f"/api/investigations/{run['id']}/resume", json={})
+        self.assertEqual(response.status_code, 202, response.text)
+        final = self.client.get(f"/api/investigations/{run['id']}").json()
+        missing = next(
+            row
+            for row in final["state"]["evidence"][0]["rows"]
+            if row["region"] == "Missing"
+        )
+        self.assertIsNone(missing["revenue"])
+
+    def test_unknown_group_measurements_are_not_interpreted_as_a_low_rank(self):
+        self.datasets.df = pd.DataFrame(
+            {"region": ["Missing", "Measured"], "revenue": [None, 7.0]}
+        )
+        self.responses = [
+            {
+                "steps": [
+                    {"operation": "group_by", "metric": "revenue", "group_by": "region"}
+                ]
+            },
+            {
+                "findings": [
+                    {
+                        "evidence_id": "e1",
+                        "observation": "Missing is the lowest performing group.",
+                    }
+                ]
+            },
+        ]
+        run = self.submit()
+        observation = run["state"]["findings"][0]["observation"].lower()
+        self.assertNotIn("lowest", observation)
+        self.assertIn("unknown", observation)

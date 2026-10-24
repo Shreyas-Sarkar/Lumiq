@@ -76,6 +76,7 @@ export interface Investigation {
     }[];
     concept_answer?: string;
     follow_ups?: string[];
+    interpretation_reused?: boolean;
     http_attempts: number;
     provider_calls: {
       stage: string;

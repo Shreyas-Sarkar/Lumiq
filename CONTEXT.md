@@ -1,6 +1,6 @@
 # Lumiq implementation map
 
-Backend verified against source on 2026-10-02; frontend updated on 2026-10-23.
+Backend and frontend updated on 2026-10-24; see docs/verification.md for test scope.
 
 ## Flow
 
@@ -17,11 +17,19 @@ Backend verified against source on 2026-10-02; frontend updated on 2026-10-23.
 6. The analyst receives evidence and must return valid evidence references without
    numerical claims. Numeric facts in the UI come from the stored calculations.
    Period comparison direction and row-count statements are grounded deterministically
-   on creation and when reading historical runs.
+   on creation and when reading historical completed runs. Failed interpretation
+   keeps evidence available without fabricating completed findings.
+   All-missing grouped sums remain unknown; only categories absent from a period
+   contribute zero. Grouped evidence containing unknown measurements gets a
+   deterministic limitation statement so model prose cannot rank it as zero.
+   Tool version 1.1 invalidates old computation reuse; unfinished
+   older evidence is recomputed before interpretation.
 7. Gemini and Groq share a bounded attempt budget. Provider reservations, cooldowns,
    run state, and expiring leases persist in Postgres through owner-scoped RPCs.
 8. The browser polls stored status. Resume preserves completed evidence. Startup
    recovers up to three unfinished runs; sleeping hosting has no background guarantee.
+   Resume/cancel revalidate the freshly claimed state, preserving newer completed
+   evidence and attempt counts. Changed clarification invalidates dependent results.
 
 ## Files
 
@@ -46,8 +54,13 @@ The graph uses application stage checkpoints, not LangGraph PostgresSaver or
 checkpoint replay; see ADR 0002. Persisted state holds references and bounded
 evidence, not dataframes. Completed runs are immutable through the public API;
 revisions share an investigation ID. Computations can be reused for identical
-owner, dataset version, plan, and tool version. Interpretation is not reused across
-changed context.
+owner, dataset version, plan, and tool version. Validated interpretation payloads
+are cached separately in completed run state, scoped to owner/dataset and keyed by
+the exact question/context/evidence prompt, schema, prompt version, evidence/tool
+key, and configured provider models. Cache hits are validated again and disclosed
+in run history; internal payloads/keys are not returned by the public API. Changed
+context or model configuration requires fresh interpretation. Planner calls are
+not cached.
 
 ## Legacy and deployment
 

@@ -35,10 +35,16 @@ def public(run):
         if k not in ("lease_token", "lease_until", "user_id")
     }
     if "state" in result:
-        state = result["state"]
-        result["state"] = {**state, "findings": grounded_findings(
-            state.get("evidence", []), state.get("findings", [])
-        )}
+        state = {
+            k: v
+            for k, v in result["state"].items()
+            if k not in ("interpretation_key", "interpretation_payload")
+        }
+        if state.get("status") == "complete" or state.get("findings"):
+            state["findings"] = grounded_findings(
+                state.get("evidence", []), state.get("findings", [])
+            )
+        result["state"] = state
     return result
 
 
@@ -139,7 +145,10 @@ async def cancel(run_id: str, request: Request, user=Depends(get_current_user)):
     claimed = svc.store.claim(run_id, user["id"])
     if not claimed:
         raise HTTPException(409, "A calculation is active; cancel after it checkpoints")
-    state = run["state"]
+    state = claimed["state"]
+    if state["status"] == "complete":
+        svc.store.checkpoint(claimed, state, True)
+        raise HTTPException(409, "Completed results are immutable")
     state["status"] = "cancelled"
     return public(svc.store.checkpoint(claimed, state, True))
 

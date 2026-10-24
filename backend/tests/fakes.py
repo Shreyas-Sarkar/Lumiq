@@ -79,6 +79,19 @@ class FakeStore:
             None,
         )
 
+    def cached_interpretation(self, owner, dataset, key):
+        return next(
+            (
+                copy.deepcopy(row["state"].get("interpretation_payload"))
+                for row in self.rows.values()
+                if row["user_id"] == owner
+                and row["dataset_id"] == dataset
+                and row["state"].get("status") == "complete"
+                and row["state"].get("interpretation_key") == key
+            ),
+            None,
+        )
+
     def claim(self, rid, owner):
         r = self.get(rid, owner)
         if not r or self.rows[rid].get("lease_token"):

@@ -140,7 +140,10 @@ function EvidenceView({
                 <div
                   className={Number(row[chart.y]) < 0 ? "bar negative" : "bar"}
                   style={{
-                    width: `${Math.max((Math.abs(Number(row[chart.y]) || 0) / max) * 100, 1)}%`,
+                    width:
+                      row[chart.y] == null
+                        ? "0%"
+                        : `${Math.max((Math.abs(Number(row[chart.y]) || 0) / max) * 100, 0)}%`,
                   }}
                 />
               </div>
@@ -956,6 +959,12 @@ export default function InvestigationWorkspace({
                     Saved calculations are retained across interpretation
                     retries.
                   </p>
+                  {current.state.interpretation_reused && (
+                    <p>
+                      Interpretation reused from a validated saved run with
+                      identical inputs and model configuration.
+                    </p>
+                  )}
                   <ul>
                     {current.state.events.map((event, i) => (
                       <li key={i}>

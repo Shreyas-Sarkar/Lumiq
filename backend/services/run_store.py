@@ -109,6 +109,19 @@ class RunStore:
         )
         return rows[0]["state"].get("evidence") if rows else None
 
+    def cached_interpretation(self, owner, dataset_id, key):
+        rows = (
+            self.db.table("investigation_run")
+            .select("state")
+            .eq("user_id", owner)
+            .eq("dataset_id", dataset_id)
+            .contains("state", {"status": "complete", "interpretation_key": key})
+            .limit(1)
+            .execute()
+            .data
+        )
+        return rows[0]["state"].get("interpretation_payload") if rows else None
+
     def claim(self, run_id, owner):
         token = str(uuid.uuid4())
         rows = (
